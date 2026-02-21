@@ -17,6 +17,7 @@ const FAST_FALL_SPEED = 900.0
 const VAPOR_SPEED = 120.0
 const VAPOR_FLOAT = -80.0
 const VAPOR_MAX_TIME = 2.0
+const VAPOR_LANDING_STUN_TIME = 3.0
 const ATTACK_KNOCKBACK = 800.0
 const STOMP_BOUNCE = -350.0
 const DASH_SPEED = 600.0
@@ -52,6 +53,7 @@ const CHARGE_THRESHOLD = 0.4
 const PROJECTILE_COOLDOWN = 0.8
 var projectile_cooldown_timer := 0.0
 var stunned_timer := 0.0
+var vapor_landing_stun_pending := false
 var drop_through_timer := 0.0
 const DROP_THROUGH_TIME = 0.25
 var coyote_timer := 0.0
@@ -146,6 +148,8 @@ func _physics_process(delta: float) -> void:
 	invincible_timer = max(invincible_timer - delta, 0.0)
 	projectile_cooldown_timer = max(projectile_cooldown_timer - delta, 0.0)
 	dash_cooldown_timer = max(dash_cooldown_timer - delta, 0.0)
+	if stunned_timer > 0.0 and not vapor_landing_stun_pending:
+		stunned_timer = max(stunned_timer - delta, 0.0)
 
 	if drop_through_timer > 0.0:
 		drop_through_timer -= delta
@@ -154,7 +158,7 @@ func _physics_process(delta: float) -> void:
 
 	if invincible_timer > 0.0:
 		avatar.modulate.a = 0.5 if fmod(invincible_timer, 0.15) > 0.075 else 1.0
-	elif stunned_timer > 0.0:
+	elif _is_stunned():
 		avatar.modulate = Color(1.0, 0.3, 0.3, 0.9 if fmod(Time.get_ticks_msec() / 1000.0, 0.05) > 0.025 else 1.0)
 	else:
 		avatar.modulate = Color(1.0, 1.0, 1.0, 1.0)
@@ -179,14 +183,15 @@ func _physics_process(delta: float) -> void:
 
 	_update_visual_state()
 
-	if stunned_timer > 0.0:
+	if _is_stunned():
 		velocity.x = 0.0
 		velocity.y += get_gravity().y * delta
 
 	move_and_slide()
 
-	if stunned_timer > 0.0 and is_on_floor():
-		stunned_timer = 0.0
+	if vapor_landing_stun_pending and is_on_floor():
+		vapor_landing_stun_pending = false
+		stunned_timer = VAPOR_LANDING_STUN_TIME
 
 	if is_fast_falling:
 		_check_stomp()
@@ -223,6 +228,7 @@ func _reset_to_spawn() -> void:
 	if form != Form.WATER:
 		_exit_form()
 	stunned_timer = 0.0
+	vapor_landing_stun_pending = false
 	is_charging = false
 	$ChargeVisual.visible = false
 	charge_time = 0.0
@@ -240,7 +246,7 @@ func _reset_to_spawn() -> void:
 	velocity = Vector2.ZERO
 
 func _handle_dash(delta: float) -> void:
-	if stunned_timer > 0.0:
+	if _is_stunned():
 		return
 	if is_dashing:
 		dash_timer -= delta
@@ -258,7 +264,7 @@ func _handle_dash(delta: float) -> void:
 		velocity.y = 0.0
 
 func _handle_form_switch(_delta: float) -> void:
-	if stunned_timer > 0.0:
+	if _is_stunned():
 		return
 
 	if form == Form.VAPOR:
@@ -270,7 +276,7 @@ func _handle_form_switch(_delta: float) -> void:
 		_enter_vapor()
 
 func _handle_attack(delta: float) -> void:
-	if stunned_timer > 0.0:
+	if _is_stunned():
 		return
 	if attack_timer > 0.0:
 		attack_timer -= delta
@@ -324,7 +330,7 @@ func _fire_projectile() -> void:
 	get_parent().add_child(proj)
 
 func _normal_physics(delta: float) -> void:
-	if is_dashing or stunned_timer > 0.0:
+	if is_dashing or _is_stunned():
 		return
 
 	var on_floor := is_on_floor()
@@ -412,7 +418,12 @@ func _exit_vapor_timeout() -> void:
 	puddle_hitbox.monitoring = false
 	scale = Vector2(1.0, 1.0)
 	velocity = Vector2.ZERO
-	stunned_timer = 1.0
+	vapor_landing_stun_pending = true
+	stunned_timer = 0.0
+
+
+func _is_stunned() -> bool:
+	return stunned_timer > 0.0 or vapor_landing_stun_pending
 
 
 func _exit_form() -> void:

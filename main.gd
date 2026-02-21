@@ -1192,8 +1192,7 @@ func _build_menu_asset_lookup() -> void:
 		var ext := file_name.get_extension().to_lower()
 		if ext not in ["png", "jpg", "jpeg", "webp"]:
 			continue
-		var normalized := _normalize_asset_name(file_name.get_basename())
-		menu_asset_lookup[normalized] = "res://assets/%s" % file_name
+		var normalized := _normalize_asset_name(file_name.get_basename()) menu_asset_lookup[normalized] = "res://assets/%s" % file_name
 
 
 func _get_menu_character_texture(character_index: int, expression: String) -> Texture2D:
