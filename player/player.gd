@@ -20,8 +20,9 @@ const VAPOR_MAX_TIME = 3.0
 const PUDDLE_SPEED = 150.0
 const PUDDLE_MAX_TIME = 3.0
 const FORM_COOLDOWN = 2.0
-const ATTACK_KNOCKBACK = 500.0
+const ATTACK_KNOCKBACK = 800.0
 const MAX_HITS = 3
+const MAX_STOCKS = 3
 const HIT_INVINCIBILITY = 0.5
 
 @export var action_left := "p1_left"
@@ -63,6 +64,10 @@ var visual_textures: Dictionary = {}
 
 signal hit_changed(hits: int)
 signal died
+signal stock_changed(stocks: int)
+signal eliminated
+
+var stocks := MAX_STOCKS
 
 @onready var body: Polygon2D = $Body
 @onready var shine: Polygon2D = $Shine
@@ -82,6 +87,7 @@ func _ready() -> void:
 	shine.visible = not has_avatar
 	_update_avatar_texture("face")
 	hit_changed.emit.call_deferred(hits_taken)
+	stock_changed.emit.call_deferred(stocks)
 
 
 func apply_character_color(new_color: Color) -> void:
@@ -101,8 +107,12 @@ func apply_character_profile(new_color: Color, new_asset_prefix: String) -> void
 
 
 func reset_for_round() -> void:
+	stocks = MAX_STOCKS
 	hits_taken = 0
+	visible = true
+	set_physics_process(true)
 	hit_changed.emit(hits_taken)
+	stock_changed.emit(stocks)
 	_reset_to_spawn()
 
 func _physics_process(delta: float) -> void:
@@ -144,9 +154,19 @@ func _physics_process(delta: float) -> void:
 		_fall_death()
 
 func _fall_death() -> void:
+	_lose_stock()
+
+func _lose_stock() -> void:
+	stocks -= 1
+	stock_changed.emit(stocks)
 	died.emit()
 	hits_taken = 0
 	hit_changed.emit(hits_taken)
+	if stocks <= 0:
+		eliminated.emit()
+		set_physics_process(false)
+		visible = false
+		return
 	_reset_to_spawn()
 
 func _reset_to_spawn() -> void:
@@ -378,10 +398,7 @@ func take_hit(_damage: int, knockback_dir: float) -> void:
 	velocity.y = -200.0
 	hit_changed.emit(hits_taken)
 	if hits_taken >= MAX_HITS:
-		died.emit()
-		hits_taken = 0
-		hit_changed.emit(hits_taken)
-		_reset_to_spawn()
+		_lose_stock()
 
 func _on_attack_hitbox_area_entered(area: Area2D) -> void:
 	if not area.has_method("reflect"):

@@ -311,7 +311,7 @@ offset_left = 22.0
 offset_top = 24.0
 offset_right = 700.0
 offset_bottom = 88.0
-text = "DEATH SCREEN"
+text = "K.O."
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 52
 
@@ -320,7 +320,7 @@ offset_left = 22.0
 offset_top = 104.0
 offset_right = 700.0
 offset_bottom = 154.0
-text = "P1 WINS ROUND 1"
+text = "P1 WINS!"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 32
 
@@ -365,7 +365,7 @@ offset_left = 22.0
 offset_top = 348.0
 offset_right = 700.0
 offset_bottom = 390.0
-text = "Match Score 0 - 0"
+text = ""
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 24
 
@@ -383,56 +383,33 @@ offset_left = 22.0
 offset_top = 404.0
 offset_right = 700.0
 offset_bottom = 446.0
-text = "Press Attack or Jump for next round"
+text = "Attack/Jump: Rematch   Vapor: Main Menu"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 20
 
 [node name="P1Shields" type="HBoxContainer" parent="HUD"]
 offset_left = 16.0
 offset_top = 12.0
-offset_right = 120.0
+offset_right = 140.0
 offset_bottom = 42.0
 
-[node name="P1Label" type="Label" parent="HUD"]
+[node name="P1Stocks" type="HBoxContainer" parent="HUD"]
 offset_left = 16.0
-offset_top = 44.0
-offset_right = 120.0
-offset_bottom = 60.0
-text = "P1"
-horizontal_alignment = 0
-
-[node name="P1Deaths" type="Label" parent="HUD"]
-offset_left = 16.0
-offset_top = 62.0
-offset_right = 120.0
-offset_bottom = 78.0
-text = "Deaths: 0"
-theme_override_font_sizes/font_size = 12
-theme_override_colors/font_color = Color(0.5, 0.7, 1.0, 1.0)
+offset_top = 46.0
+offset_right = 140.0
+offset_bottom = 70.0
 
 [node name="P2Shields" type="HBoxContainer" parent="HUD"]
-offset_left = 1032.0
+offset_left = 1012.0
 offset_top = 12.0
 offset_right = 1136.0
 offset_bottom = 42.0
 
-[node name="P2Label" type="Label" parent="HUD"]
-offset_left = 1032.0
-offset_top = 44.0
+[node name="P2Stocks" type="HBoxContainer" parent="HUD"]
+offset_left = 1012.0
+offset_top = 46.0
 offset_right = 1136.0
-offset_bottom = 60.0
-text = "P2"
-horizontal_alignment = 2
-
-[node name="P2Deaths" type="Label" parent="HUD"]
-offset_left = 1032.0
-offset_top = 62.0
-offset_right = 1136.0
-offset_bottom = 78.0
-text = "Deaths: 0"
-theme_override_font_sizes/font_size = 12
-theme_override_colors/font_color = Color(1.0, 0.5, 0.45, 1.0)
-horizontal_alignment = 2
+offset_bottom = 70.0
 
 [node name="LegendBG" type="ColorRect" parent="HUD"]
 offset_left = 280.0
@@ -555,5 +532,5 @@ one_way_collision = true
 
 [connection signal="hit_changed" from="Player1" to="HUD" method="set_p1_hits"]
 [connection signal="hit_changed" from="Player2" to="HUD" method="set_p2_hits"]
-[connection signal="died" from="Player1" to="HUD" method="add_p1_death"]
-[connection signal="died" from="Player2" to="HUD" method="add_p2_death"]
+[connection signal="stock_changed" from="Player1" to="HUD" method="set_p1_stocks"]
+[connection signal="stock_changed" from="Player2" to="HUD" method="set_p2_stocks"]

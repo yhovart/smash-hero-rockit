@@ -1,97 +1,86 @@
 extends CanvasLayer
 
 const MAX_HITS = 3
-const SHIELD_SIZE = 20.0
+const HIT_ICON_SIZE = 28.0
+const TROPHY_ICON_SIZE = 22.0
 
 var p1_hits := 0
 var p2_hits := 0
-var p1_deaths := 0
-var p2_deaths := 0
+var p1_face_texture: Texture2D = null
+var p2_face_texture: Texture2D = null
 
-@onready var p1_container: Control = $P1Shields
-@onready var p2_container: Control = $P2Shields
-@onready var p1_death_label: Label = $P1Deaths
-@onready var p2_death_label: Label = $P2Deaths
+@onready var p1_hits_container: HBoxContainer = $P1Shields
+@onready var p2_hits_container: HBoxContainer = $P2Shields
+@onready var p1_stocks_container: HBoxContainer = $P1Stocks
+@onready var p2_stocks_container: HBoxContainer = $P2Stocks
 
 func _ready() -> void:
-	_build_shields(p1_container, MAX_HITS)
-	_build_shields(p2_container, MAX_HITS)
-	_update_shields()
-	_update_death_labels()
+	_rebuild_hit_icons(p1_hits_container, MAX_HITS, p1_face_texture)
+	_rebuild_hit_icons(p2_hits_container, MAX_HITS, p2_face_texture)
+
+func set_p1_face(texture: Texture2D) -> void:
+	p1_face_texture = texture
+	if is_inside_tree() and p1_hits_container != null:
+		_rebuild_hit_icons(p1_hits_container, MAX_HITS - p1_hits, p1_face_texture)
+
+func set_p2_face(texture: Texture2D) -> void:
+	p2_face_texture = texture
+	if is_inside_tree() and p2_hits_container != null:
+		_rebuild_hit_icons(p2_hits_container, MAX_HITS - p2_hits, p2_face_texture)
 
 func set_p1_hits(hits: int) -> void:
 	p1_hits = hits
-	if is_inside_tree() and p1_container != null:
-		_update_shields()
+	if is_inside_tree() and p1_hits_container != null:
+		_rebuild_hit_icons(p1_hits_container, MAX_HITS - hits, p1_face_texture)
 
 func set_p2_hits(hits: int) -> void:
 	p2_hits = hits
-	if is_inside_tree() and p2_container != null:
-		_update_shields()
+	if is_inside_tree() and p2_hits_container != null:
+		_rebuild_hit_icons(p2_hits_container, MAX_HITS - hits, p2_face_texture)
 
-func add_p1_death() -> void:
-	p1_deaths += 1
-	if is_inside_tree() and p1_death_label != null:
-		_update_death_labels()
+func set_p1_stocks(stocks: int) -> void:
+	if is_inside_tree() and p1_stocks_container != null:
+		_rebuild_trophy_icons(p1_stocks_container, stocks)
 
-func add_p2_death() -> void:
-	p2_deaths += 1
-	if is_inside_tree() and p2_death_label != null:
-		_update_death_labels()
+func set_p2_stocks(stocks: int) -> void:
+	if is_inside_tree() and p2_stocks_container != null:
+		_rebuild_trophy_icons(p2_stocks_container, stocks)
 
-func _build_shields(container: Control, count: int) -> void:
+func _rebuild_hit_icons(container: HBoxContainer, remaining: int, face_tex: Texture2D) -> void:
+	for child in container.get_children():
+		child.queue_free()
+	for i in MAX_HITS:
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(HIT_ICON_SIZE, HIT_ICON_SIZE)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		if face_tex != null:
+			icon.texture = face_tex
+		if i >= remaining:
+			icon.modulate = Color(0.25, 0.25, 0.25, 0.4)
+		container.add_child(icon)
+
+func _rebuild_trophy_icons(container: HBoxContainer, count: int) -> void:
+	for child in container.get_children():
+		child.queue_free()
 	for i in count:
-		var shield := ShieldIcon.new()
-		shield.custom_minimum_size = Vector2(SHIELD_SIZE, SHIELD_SIZE + 4)
-		container.add_child(shield)
-
-func _update_shields() -> void:
-	for i in p1_container.get_child_count():
-		var shield: ShieldIcon = p1_container.get_child(i) as ShieldIcon
-		shield.alive = i >= p1_hits
-		shield.shield_color = Color(0.15, 0.45, 0.95, 1.0)
-		shield.queue_redraw()
-
-	for i in p2_container.get_child_count():
-		var shield: ShieldIcon = p2_container.get_child(i) as ShieldIcon
-		shield.alive = i >= p2_hits
-		shield.shield_color = Color(0.9, 0.2, 0.15, 1.0)
-		shield.queue_redraw()
-
-func _update_death_labels() -> void:
-	p1_death_label.text = "Deaths: " + str(p1_deaths)
-	p2_death_label.text = "Deaths: " + str(p2_deaths)
+		var heart := HeartIcon.new()
+		heart.custom_minimum_size = Vector2(TROPHY_ICON_SIZE, TROPHY_ICON_SIZE)
+		container.add_child(heart)
 
 
-class ShieldIcon extends Control:
-	var alive := true
-	var shield_color := Color.WHITE
-
+class HeartIcon extends Control:
 	func _draw() -> void:
 		var cx := size.x / 2.0
-		var w := size.x * 0.45
-		var top := 2.0
-		var mid := size.y * 0.45
-		var bot := size.y - 2.0
-
-		var points := PackedVector2Array([
-			Vector2(cx, top),
-			Vector2(cx + w, top + 4),
-			Vector2(cx + w, mid),
-			Vector2(cx + w * 0.6, mid + (bot - mid) * 0.5),
-			Vector2(cx, bot),
-			Vector2(cx - w * 0.6, mid + (bot - mid) * 0.5),
-			Vector2(cx - w, mid),
-			Vector2(cx - w, top + 4),
-		])
-
-		if alive:
-			draw_colored_polygon(points, shield_color)
-			draw_polyline(points + PackedVector2Array([points[0]]), Color(1, 1, 1, 0.4), 1.5)
-		else:
-			draw_colored_polygon(points, Color(0.3, 0.3, 0.3, 0.4))
-			draw_polyline(points + PackedVector2Array([points[0]]), Color(0.5, 0.5, 0.5, 0.3), 1.0)
-			var crack_start := Vector2(cx - 3, top + 6)
-			var crack_end := Vector2(cx + 2, bot - 6)
-			var crack_mid := Vector2(cx + 4, (top + bot) / 2.0)
-			draw_polyline(PackedVector2Array([crack_start, crack_mid, crack_end]), Color(0.6, 0.1, 0.1, 0.6), 1.5)
+		var cy := size.y / 2.0
+		var sx := size.x * 0.48
+		var sy := size.y * 0.46
+		var pts := PackedVector2Array()
+		var steps := 32
+		for i in steps + 1:
+			var t := float(i) / float(steps) * TAU
+			var x := sx * (16.0 * pow(sin(t), 3)) / 16.0
+			var y := -sy * (13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)) / 16.0
+			pts.append(Vector2(cx + x, cy + y - size.y * 0.05))
+		draw_colored_polygon(pts, Color(0.9, 0.15, 0.2, 1.0))
+		draw_polyline(pts, Color(1.0, 0.4, 0.45, 0.6), 1.0)

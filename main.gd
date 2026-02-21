@@ -5,9 +5,7 @@ const P2_ACTIONS: Array[String] = ["p2_left", "p2_right", "p2_jump", "p2_attack"
 const CHARACTER_NAMES: Array[String] = ["Franck", "Yves-Henri", "Joel", "Maite"]
 const CHARACTER_ASSET_PREFIXES: Array[String] = ["franck", "Yves-Henri", "Joel", "Maite"]
 const ARENA_NAMES: Array[String] = ["Classic", "Sky Bridge", "Pitfall"]
-const WINS_TO_TAKE_MATCH := 2
-const ROUND_RESULT_MIN_DISPLAY := 2.0
-const MATCH_RESULT_MIN_DISPLAY := 2.5
+const RESULT_MIN_DISPLAY := 2.0
 const CHARACTER_COLORS: Array[Color] = [
 	Color(0.15, 0.45, 0.95, 1.0),
 	Color(0.9, 0.2, 0.15, 1.0),
@@ -24,12 +22,8 @@ var arena_select_index := 0
 var p1_locked := false
 var p2_locked := false
 var is_arena_select_active := false
-var p1_round_wins := 0
-var p2_round_wins := 0
-var current_round := 1
-var is_round_result_active := false
-var is_match_over := false
-var round_result_input_delay := 0.0
+var is_result_active := false
+var result_input_delay := 0.0
 var selected_arena_index := 0
 var menu_asset_lookup: Dictionary = {}
 
@@ -81,10 +75,10 @@ var menu_asset_lookup: Dictionary = {}
 
 func _ready() -> void:
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
-	if player_1.has_signal("died"):
-		player_1.connect("died", Callable(self, "_on_player_1_died"))
-	if player_2.has_signal("died"):
-		player_2.connect("died", Callable(self, "_on_player_2_died"))
+	if player_1.has_signal("eliminated"):
+		player_1.connect("eliminated", Callable(self, "_on_player_1_died"))
+	if player_2.has_signal("eliminated"):
+		player_2.connect("eliminated", Callable(self, "_on_player_2_died"))
 	_build_menu_asset_lookup()
 	end_screen.visible = false
 	_initialize_character_select()
@@ -94,9 +88,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if is_round_result_active:
-		round_result_input_delay = max(round_result_input_delay - delta, 0.0)
-		_handle_round_result_input()
+	if is_result_active:
+		result_input_delay = max(result_input_delay - delta, 0.0)
+		_handle_result_input()
 		return
 	if not is_character_select_active:
 		_handle_in_fight_menu_input()
@@ -208,18 +202,18 @@ func _handle_arena_select_input() -> void:
 func _start_match_with_selection() -> void:
 	_apply_character_to_player(player_1, p1_character_index)
 	_apply_character_to_player(player_2, p2_character_index)
+	if player_1.has_method("get_expression_texture"):
+		hud.set_p1_face(player_1.get_expression_texture("face"))
+	if player_2.has_method("get_expression_texture"):
+		hud.set_p2_face(player_2.get_expression_texture("face"))
 	selected_arena_index = arena_select_index
 	_apply_arena(selected_arena_index)
 	character_select.visible = false
-	_start_best_of_three()
+	_start_game()
 
 
-func _start_best_of_three() -> void:
-	p1_round_wins = 0
-	p2_round_wins = 0
-	current_round = 1
-	is_match_over = false
-	is_round_result_active = false
+func _start_game() -> void:
+	is_result_active = false
 	end_screen.visible = false
 	hud.visible = true
 	is_character_select_active = false
@@ -235,38 +229,26 @@ func _reset_players_for_round() -> void:
 
 
 func _on_player_1_died() -> void:
-	_handle_round_end(2)
+	_handle_game_end(2)
 
 
 func _on_player_2_died() -> void:
-	_handle_round_end(1)
+	_handle_game_end(1)
 
 
-func _handle_round_end(winner_player: int) -> void:
-	if is_character_select_active or is_round_result_active:
+func _handle_game_end(winner_player: int) -> void:
+	if is_character_select_active or is_result_active:
 		return
 
-	is_round_result_active = true
+	is_result_active = true
+	result_input_delay = RESULT_MIN_DISPLAY
 	_set_gameplay_enabled(false)
-
-	if winner_player == 1:
-		p1_round_wins += 1
-	else:
-		p2_round_wins += 1
 
 	var winner_name := "P1" if winner_player == 1 else "P2"
 	var winner_color := Color(0.2, 0.5, 1.0, 0.88) if winner_player == 1 else Color(1.0, 0.2, 0.2, 0.88)
 
-	if p1_round_wins >= WINS_TO_TAKE_MATCH or p2_round_wins >= WINS_TO_TAKE_MATCH:
-		is_match_over = true
-		round_result_input_delay = MATCH_RESULT_MIN_DISPLAY
-		_show_end_screen("DEATH SCREEN", "%s WINS THE MATCH" % winner_name, winner_color, "Match Score %d - %d" % [p1_round_wins, p2_round_wins], "Attack/Jump: Rematch   Vapor: Main Menu")
-		_update_end_screen_faces(winner_player)
-	else:
-		is_match_over = false
-		round_result_input_delay = ROUND_RESULT_MIN_DISPLAY
-		_show_end_screen("DEATH SCREEN", "%s WINS ROUND %d" % [winner_name, current_round], winner_color, "Match Score %d - %d" % [p1_round_wins, p2_round_wins], "Attack/Jump: Next Round   Vapor: Main Menu")
-		_update_end_screen_faces(winner_player)
+	_show_end_screen("K.O.", "%s WINS!" % winner_name, winner_color, "", "Attack/Jump: Rematch   Vapor: Main Menu")
+	_update_end_screen_faces(winner_player)
 
 
 func _show_end_screen(title: String, subtitle: String, tint: Color, score_text: String, hint_text: String) -> void:
@@ -302,24 +284,15 @@ func _get_player_expression_texture(player_node: Node, expression: String) -> Te
 	return null
 
 
-func _handle_round_result_input() -> void:
-	if round_result_input_delay > 0.0:
+func _handle_result_input() -> void:
+	if result_input_delay > 0.0:
 		return
 	if _return_to_menu_pressed_any_player():
 		_return_to_main_menu()
 		return
 	if not _confirm_pressed_any_player():
 		return
-
-	if is_match_over:
-		_start_best_of_three()
-		return
-
-	current_round += 1
-	is_round_result_active = false
-	end_screen.visible = false
-	_reset_players_for_round()
-	_set_gameplay_enabled(true)
+	_start_game()
 
 
 func _return_to_menu_pressed_any_player() -> bool:
@@ -328,12 +301,8 @@ func _return_to_menu_pressed_any_player() -> bool:
 
 
 func _return_to_main_menu() -> void:
-	is_round_result_active = false
-	is_match_over = false
-	round_result_input_delay = 0.0
-	p1_round_wins = 0
-	p2_round_wins = 0
-	current_round = 1
+	is_result_active = false
+	result_input_delay = 0.0
 	end_screen.visible = false
 	_initialize_character_select()
 
