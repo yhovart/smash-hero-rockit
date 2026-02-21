@@ -19,7 +19,6 @@ const CHARACTER_NAMES: Array[String] = [
 	"Roxane",
 	"Tommy",
 	"Ash",
-	"JW",
 ]
 const CHARACTER_ASSET_PREFIXES: Array[String] = [
 	"franck",
@@ -32,7 +31,6 @@ const CHARACTER_ASSET_PREFIXES: Array[String] = [
 	"Roxane",
 	"Tommy",
 	"Ash",
-	"JW",
 ]
 const CHARACTER_COLORS: Array[Color] = [
 	Color(0.15, 0.45, 0.95, 1.0),
@@ -45,7 +43,6 @@ const CHARACTER_COLORS: Array[Color] = [
 	Color(0.86, 0.32, 0.54, 1.0),
 	Color(0.28, 0.84, 0.58, 1.0),
 	Color(0.7, 0.7, 0.75, 1.0),
-	Color(0.58, 0.45, 0.95, 1.0),
 ]
 const PLAYER_LABEL_COLORS: Array[Color] = [
 	Color(0.5, 0.7, 1.0, 1.0),
@@ -89,12 +86,6 @@ const SFX_WILHELM_PATH := "res://assets/sounds/wilhelm.mp3"
 const SFX_FINISH_HIM_PATH := "res://assets/sounds/finish-him.mp3"
 const SFX_VICTORY_PATH := "res://assets/sounds/victoryff.swf.mp3"
 const SFX_JUMP_PATH := "res://assets/sounds/jump.mp3"
-const BGM_BIT_SHIFT_PATH := "res://assets/sounds/bit-shift-kevin-macleod-main-version-24901-03-12.mp3"
-const ARENA_BGM_PATHS: Array[String] = [
-	BGM_BIT_SHIFT_PATH,
-	BGM_BIT_SHIFT_PATH,
-	BGM_BIT_SHIFT_PATH,
-]
 const SPAWN_Y := 500.0
 const VIEWPORT_W := 1152.0
 const VIEWPORT_H := 648.0
@@ -141,17 +132,6 @@ var wilhelm_player: AudioStreamPlayer
 var finish_him_player: AudioStreamPlayer
 var victory_player: AudioStreamPlayer
 var jump_player: AudioStreamPlayer
-var arena_music_player: AudioStreamPlayer
-var arena_music_streams: Array[AudioStream] = []
-
-var settings_bgm_volume := 1.0
-var settings_sfx_volume := 1.0
-var _settings_open := false
-var _settings_cursor := 0  # 0 = BGM, 1 = SFX
-var _settings_layer: CanvasLayer
-var _settings_row_frames: Array[ColorRect] = []
-var _settings_bar_fills: Array[ColorRect] = []
-var _settings_pct_labels: Array[Label] = []
 
 # ─── Scene References ──────────────────────────────────────────────────────────
 
@@ -201,7 +181,6 @@ var _settings_pct_labels: Array[Label] = []
 var _count_layer: CanvasLayer
 var _count_boxes: Array[ColorRect] = []
 var _count_labels: Array[Label] = []
-var _count_frames: Array[ColorRect] = []
 
 var _char_layer: CanvasLayer
 var _char_title: Label
@@ -211,8 +190,6 @@ var _char_status_labels: Array[Label] = []
 var _char_control_labels: Array[Label] = []
 var _char_hint: Label
 var _char_columns: Array[Control] = []
-var _char_card_bgs: Array[ColorRect] = []
-var _char_card_accents: Array[ColorRect] = []
 
 var _arena_layer: CanvasLayer
 var _arena_title: Label
@@ -220,11 +197,7 @@ var _arena_cards: Array[ColorRect] = []
 var _arena_card_labels: Array[Label] = []
 var _arena_card_bg_holders: Array[Node2D] = []
 var _arena_card_glows: Array[ColorRect] = []
-var _arena_card_frames: Array[ColorRect] = []
 var _arena_hint: Label
-
-var _plat_highlight_rects: Array[ColorRect] = []
-var _plat_shadow_rects: Array[ColorRect] = []
 
 # ─── Ready ─────────────────────────────────────────────────────────────────────
 
@@ -243,11 +216,9 @@ func _ready() -> void:
 			p.connect("fell_out", _on_player_fell_out)
 		if p.has_signal("jumped"):
 			p.connect("jumped", _on_player_jumped)
-	_setup_audio_buses()
 	_setup_audio_players()
 	_build_menu_asset_lookup()
 	_swap_background(0)
-	_setup_platform_visual_extras()
 	end_screen.visible = false
 	_old_char_select.visible = false
 	hud.visible = false
@@ -255,7 +226,6 @@ func _ready() -> void:
 	_build_count_screen()
 	_build_char_screen()
 	_build_arena_screen()
-	_build_settings_screen()
 	_show_phase(MenuPhase.PLAYER_COUNT)
 	_ensure_remote_fallback_bindings()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
@@ -263,9 +233,6 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if _settings_open:
-		_handle_settings_input()
-		return
 	if is_result_active:
 		result_input_delay = max(result_input_delay - delta, 0.0)
 		_handle_result_input()
@@ -334,163 +301,80 @@ func _build_count_screen() -> void:
 	_count_layer.layer = 10
 	add_child(_count_layer)
 
-	# Backdrop
 	var backdrop := ColorRect.new()
-	backdrop.color = Color(0.04, 0.05, 0.08, 0.93)
+	backdrop.color = Color(0, 0, 0, 0.80)
 	backdrop.offset_right = VIEWPORT_W
 	backdrop.offset_bottom = VIEWPORT_H
 	_count_layer.add_child(backdrop)
 
-	# Top accent bar
-	var top_bar := ColorRect.new()
-	top_bar.color = Color(0.25, 0.50, 0.95, 0.90)
-	top_bar.offset_right = VIEWPORT_W
-	top_bar.offset_bottom = 4.0
-	_count_layer.add_child(top_bar)
-
-	# Bottom accent bar
-	var bot_bar := ColorRect.new()
-	bot_bar.color = Color(0.25, 0.50, 0.95, 0.90)
-	bot_bar.offset_top = VIEWPORT_H - 4.0
-	bot_bar.offset_right = VIEWPORT_W
-	bot_bar.offset_bottom = VIEWPORT_H
-	_count_layer.add_child(bot_bar)
-
-	# Title drop-shadow
-	var title_shadow := _make_label("SMASH HERO ROCKIT", 46, Color(0.05, 0.08, 0.22, 0.88))
-	title_shadow.offset_left = 3.0
-	title_shadow.offset_top = 93.0
-	title_shadow.offset_right = VIEWPORT_W + 3.0
-	title_shadow.offset_bottom = 157.0
-	title_shadow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_count_layer.add_child(title_shadow)
-
-	# Title
-	var title := _make_label("SMASH HERO ROCKIT", 46, Color.WHITE)
+	var title := _make_label("SMASH HERO ROCKIT", 42, Color.WHITE)
 	title.offset_left = 0
-	title.offset_top = 90.0
+	title.offset_top = 100
 	title.offset_right = VIEWPORT_W
-	title.offset_bottom = 154.0
+	title.offset_bottom = 160
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_count_layer.add_child(title)
 
-	# Divider accent line
-	var divider := ColorRect.new()
-	divider.color = Color(0.30, 0.55, 1.0, 0.55)
-	divider.offset_left = VIEWPORT_W * 0.30
-	divider.offset_top = 165.0
-	divider.offset_right = VIEWPORT_W * 0.70
-	divider.offset_bottom = 167.0
-	_count_layer.add_child(divider)
-
-	# Subtitle
-	var subtitle := _make_label("How many players?", 22, Color(0.72, 0.80, 1.0, 1.0))
+	var subtitle := _make_label("How many players?", 26, Color(0.8, 0.85, 1.0))
 	subtitle.offset_left = 0
-	subtitle.offset_top = 176.0
+	subtitle.offset_top = 180
 	subtitle.offset_right = VIEWPORT_W
-	subtitle.offset_bottom = 210.0
+	subtitle.offset_bottom = 220
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_count_layer.add_child(subtitle)
 
 	var box_w := 140.0
-	var box_h := 130.0
-	var gap := 60.0
+	var box_h := 120.0
+	var gap := 50.0
 	var total_w := 3 * box_w + 2 * gap
 	var start_x := (VIEWPORT_W - total_w) / 2.0
-	var box_y := 238.0
+	var box_y := 260.0
 
 	_count_boxes.clear()
 	_count_labels.clear()
-	_count_frames.clear()
 
 	for i in 3:
-		var bx := start_x + i * (box_w + gap)
-		var by := box_y
-
-		# Drop shadow
-		var shadow := ColorRect.new()
-		shadow.color = Color(0.0, 0.0, 0.0, 0.45)
-		shadow.offset_left = bx + 4
-		shadow.offset_top = by + 4
-		shadow.offset_right = bx + box_w + 4
-		shadow.offset_bottom = by + box_h + 4
-		_count_layer.add_child(shadow)
-
-		# Border frame
-		var frame := ColorRect.new()
-		frame.offset_left = bx - 2
-		frame.offset_top = by - 2
-		frame.offset_right = bx + box_w + 2
-		frame.offset_bottom = by + box_h + 2
-		frame.color = Color(0.20, 0.24, 0.32, 1.0)
-		_count_layer.add_child(frame)
-		_count_frames.append(frame)
-
-		# Inner box
 		var box := ColorRect.new()
-		box.offset_left = bx
-		box.offset_top = by
-		box.offset_right = bx + box_w
-		box.offset_bottom = by + box_h
-		box.color = Color(0.10, 0.12, 0.16, 1.0)
+		box.offset_left = start_x + i * (box_w + gap)
+		box.offset_top = box_y
+		box.offset_right = box.offset_left + box_w
+		box.offset_bottom = box_y + box_h
+		box.color = Color(0.15, 0.18, 0.22, 0.95)
 		_count_layer.add_child(box)
 		_count_boxes.append(box)
 
-		# Large number
-		var lbl := _make_label(str(i + 2), 56, Color.WHITE)
-		lbl.offset_left = bx
-		lbl.offset_top = by + 10
-		lbl.offset_right = bx + box_w
-		lbl.offset_bottom = by + box_h - 28
+		var lbl := _make_label(str(i + 2), 48, Color.WHITE)
+		lbl.offset_left = box.offset_left
+		lbl.offset_top = box_y + 10
+		lbl.offset_right = box.offset_right
+		lbl.offset_bottom = box_y + box_h - 10
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_count_layer.add_child(lbl)
 		_count_labels.append(lbl)
 
-		# Sub-label
-		var sub_lbl := _make_label("PLAYER%s" % ("S" if i > 0 else ""), 11, Color(0.45, 0.50, 0.60))
-		sub_lbl.offset_left = bx
-		sub_lbl.offset_top = by + box_h - 24
-		sub_lbl.offset_right = bx + box_w
-		sub_lbl.offset_bottom = by + box_h - 6
-		sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_count_layer.add_child(sub_lbl)
-
-	var hint := _make_label("← / → : Select   •   Attack / Jump : Confirm   •   Esc : Quit", 15, Color(0.40, 0.45, 0.55))
+	var hint := _make_label("← / → : Select   •   Attack / Jump : Confirm   •   Esc : Quit", 16, Color(0.6, 0.65, 0.7))
 	hint.offset_left = 0
-	hint.offset_top = 408.0
+	hint.offset_top = 440
 	hint.offset_right = VIEWPORT_W
-	hint.offset_bottom = 433.0
+	hint.offset_bottom = 470
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_count_layer.add_child(hint)
-
-	var settings_hint := _make_label("Tab : Audio Settings", 13, Color(0.30, 0.35, 0.45))
-	settings_hint.offset_left = 0
-	settings_hint.offset_top = 435.0
-	settings_hint.offset_right = VIEWPORT_W
-	settings_hint.offset_bottom = 455.0
-	settings_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_count_layer.add_child(settings_hint)
 
 
 func _update_count_ui() -> void:
 	for i in 3:
 		if i == count_cursor:
-			_count_frames[i].color = Color(1.0, 0.82, 0.22, 1.0)
-			_count_boxes[i].color = Color(0.16, 0.20, 0.30, 1.0)
-			_count_labels[i].add_theme_color_override("font_color", Color(1.0, 0.92, 0.48))
+			_count_boxes[i].color = Color(0.25, 0.5, 0.95, 0.95)
+			_count_labels[i].add_theme_color_override("font_color", Color.WHITE)
 		else:
-			_count_frames[i].color = Color(0.20, 0.24, 0.32, 1.0)
-			_count_boxes[i].color = Color(0.10, 0.12, 0.16, 1.0)
-			_count_labels[i].add_theme_color_override("font_color", Color(0.38, 0.42, 0.52))
+			_count_boxes[i].color = Color(0.15, 0.18, 0.22, 0.95)
+			_count_labels[i].add_theme_color_override("font_color", Color(0.5, 0.55, 0.6))
 
 
 func _handle_count_input() -> void:
 	if Input.is_action_just_pressed("ui_cancel"):
 		get_tree().quit()
-		return
-	if Input.is_action_just_pressed("ui_focus_next"):
-		_open_settings()
 		return
 
 	var changed := false
@@ -541,23 +425,6 @@ func _build_char_screen() -> void:
 	_char_status_labels.clear()
 	_char_control_labels.clear()
 	_char_columns.clear()
-	_char_card_bgs.clear()
-	_char_card_accents.clear()
-
-	# Card backgrounds — added before column content so they render behind
-	for i in 4:
-		var card_bg := ColorRect.new()
-		card_bg.color = Color(0.09, 0.11, 0.16, 0.92)
-		card_bg.visible = false
-		_char_layer.add_child(card_bg)
-		_char_card_bgs.append(card_bg)
-
-		var card_accent := ColorRect.new()
-		var pc := PLAYER_LABEL_COLORS[i]
-		card_accent.color = Color(pc.r, pc.g, pc.b, 0.90)
-		card_accent.visible = false
-		_char_layer.add_child(card_accent)
-		_char_card_accents.append(card_accent)
 
 	# Build 4 columns (show/hide based on num_players)
 	for i in 4:
@@ -621,52 +488,36 @@ func _layout_char_columns() -> void:
 	for i in 4:
 		var col: Control = _char_columns[i]
 		col.visible = i < n
-		var card_bg: ColorRect = _char_card_bgs[i]
-		var card_accent: ColorRect = _char_card_accents[i]
-		card_bg.visible = i < n
-		card_accent.visible = i < n
 		if i >= n:
 			continue
 
 		var x := gap + i * (col_w + gap)
 		var y := 95.0
 
-		# Card background panel
-		card_bg.offset_left = x - 12
-		card_bg.offset_top = y - 10
-		card_bg.offset_right = x + col_w + 12
-		card_bg.offset_bottom = y + 355
-
-		# Colored left accent bar (player color)
-		card_accent.offset_left = x - 12
-		card_accent.offset_top = y - 10
-		card_accent.offset_right = x - 7
-		card_accent.offset_bottom = y + 355
-
-		# Player portrait
+		# Player header  (using a background swatch)
 		var face: TextureRect = _char_face_rects[i]
-		face.offset_left = x + (col_w - 140) / 2.0
+		face.offset_left = x + (col_w - 100) / 2.0
 		face.offset_top = y
-		face.offset_right = face.offset_left + 140
-		face.offset_bottom = y + 140
+		face.offset_right = face.offset_left + 100
+		face.offset_bottom = y + 100
 
 		var name_lbl: Label = _char_name_labels[i]
 		name_lbl.offset_left = x
-		name_lbl.offset_top = y + 150
+		name_lbl.offset_top = y + 110
 		name_lbl.offset_right = x + col_w
-		name_lbl.offset_bottom = y + 180
+		name_lbl.offset_bottom = y + 140
 
 		var status_lbl: Label = _char_status_labels[i]
 		status_lbl.offset_left = x
-		status_lbl.offset_top = y + 188
+		status_lbl.offset_top = y + 145
 		status_lbl.offset_right = x + col_w
-		status_lbl.offset_bottom = y + 218
+		status_lbl.offset_bottom = y + 175
 
 		var ctrl_lbl: Label = _char_control_labels[i]
 		ctrl_lbl.offset_left = x
-		ctrl_lbl.offset_top = y + 228
+		ctrl_lbl.offset_top = y + 200
 		ctrl_lbl.offset_right = x + col_w
-		ctrl_lbl.offset_bottom = y + 346
+		ctrl_lbl.offset_bottom = y + 320
 
 
 func _update_char_ui() -> void:
@@ -783,7 +634,6 @@ func _build_arena_screen() -> void:
 	_arena_card_labels.clear()
 	_arena_card_bg_holders.clear()
 	_arena_card_glows.clear()
-	_arena_card_frames.clear()
 
 	var card_w := 300.0
 	var card_h := 280.0
@@ -793,22 +643,12 @@ func _build_arena_screen() -> void:
 	var card_y := 120.0
 
 	for i in ARENA_NAMES.size():
-		# Border frame — rendered before card so it shows as an outline
-		var frame := ColorRect.new()
-		frame.offset_left = start_x + i * (card_w + gap) - 3
-		frame.offset_top = card_y - 3
-		frame.offset_right = frame.offset_left + card_w + 6
-		frame.offset_bottom = card_y + card_h + 6
-		frame.color = Color(0.20, 0.23, 0.30, 0.85)
-		_arena_layer.add_child(frame)
-		_arena_card_frames.append(frame)
-
 		var card := ColorRect.new()
 		card.offset_left = start_x + i * (card_w + gap)
 		card.offset_top = card_y
 		card.offset_right = card.offset_left + card_w
 		card.offset_bottom = card_y + card_h
-		card.color = Color(0.10, 0.12, 0.16, 0.95)
+		card.color = Color(0.12, 0.14, 0.18, 0.95)
 		card.clip_children = CanvasItem.CLIP_CHILDREN_ONLY
 		_arena_layer.add_child(card)
 		_arena_cards.append(card)
@@ -931,16 +771,14 @@ func _load_arena_preview_bgs() -> void:
 func _update_arena_ui() -> void:
 	for i in ARENA_NAMES.size():
 		if i == arena_cursor:
-			_arena_card_frames[i].color = Color(1.0, 0.85, 0.22, 1.0)
-			_arena_cards[i].color = Color(0.16, 0.22, 0.38, 0.95)
-			_arena_card_labels[i].add_theme_color_override("font_color", Color(1.0, 0.95, 0.55))
+			_arena_cards[i].color = Color(0.2, 0.35, 0.65, 0.95)
+			_arena_card_labels[i].add_theme_color_override("font_color", Color(1.0, 1.0, 0.7))
 			_arena_card_bg_holders[i].modulate = Color(1.0, 1.0, 1.0, 1.0)
-			_arena_card_glows[i].color = Color(1.0, 1.0, 0.7, 0.14)
+			_arena_card_glows[i].color = Color(1.0, 1.0, 0.7, 0.18)
 		else:
-			_arena_card_frames[i].color = Color(0.20, 0.23, 0.30, 0.80)
-			_arena_cards[i].color = Color(0.10, 0.12, 0.16, 0.90)
-			_arena_card_labels[i].add_theme_color_override("font_color", Color(0.52, 0.58, 0.66))
-			_arena_card_bg_holders[i].modulate = Color(0.65, 0.65, 0.72, 0.90)
+			_arena_cards[i].color = Color(0.12, 0.14, 0.18, 0.95)
+			_arena_card_labels[i].add_theme_color_override("font_color", Color(0.6, 0.65, 0.7))
+			_arena_card_bg_holders[i].modulate = Color(0.72, 0.72, 0.78, 0.95)
 			_arena_card_glows[i].color = Color(1.0, 1.0, 0.7, 0.0)
 
 
@@ -1189,7 +1027,6 @@ func _return_to_main_menu() -> void:
 	result_input_delay = 0.0
 	end_screen.visible = false
 	_set_gameplay_enabled(false)
-	_stop_arena_music()
 	hud.visible = false
 	_show_phase(MenuPhase.PLAYER_COUNT)
 
@@ -1198,22 +1035,10 @@ func _return_to_main_menu() -> void:
 
 func _setup_audio_players() -> void:
 	chevre_player = _create_sfx_player(_load_mp3_stream(SFX_CHEVRE_PATH))
-	chevre_player.bus = "SFX"
 	wilhelm_player = _create_sfx_player(_load_mp3_stream(SFX_WILHELM_PATH))
-	wilhelm_player.bus = "SFX"
 	finish_him_player = _create_sfx_player(_load_mp3_stream(SFX_FINISH_HIM_PATH))
-	finish_him_player.bus = "SFX"
 	victory_player = _create_sfx_player(_load_mp3_stream(SFX_VICTORY_PATH))
-	victory_player.bus = "SFX"
 	jump_player = _create_sfx_player(_load_mp3_stream(SFX_JUMP_PATH))
-	jump_player.bus = "SFX"
-	arena_music_player = AudioStreamPlayer.new()
-	arena_music_player.volume_db = -12.0
-	arena_music_player.bus = "Music"
-	add_child(arena_music_player)
-	arena_music_streams.clear()
-	for path in ARENA_BGM_PATHS:
-		arena_music_streams.append(_load_mp3_stream(path))
 
 
 func _create_sfx_player(stream: AudioStream) -> AudioStreamPlayer:
@@ -1239,28 +1064,6 @@ func _play_sound(player: AudioStreamPlayer) -> void:
 	player.play()
 
 
-func _play_arena_music(arena_index: int) -> void:
-	if arena_music_player == null:
-		return
-	if arena_index < 0 or arena_index >= arena_music_streams.size():
-		return
-	var stream: AudioStream = arena_music_streams[arena_index]
-	if stream == null:
-		return
-	if stream is AudioStreamMP3:
-		stream.loop = true
-	if arena_music_player.stream == stream and arena_music_player.playing:
-		return
-	arena_music_player.stream = stream
-	arena_music_player.play()
-
-
-func _stop_arena_music() -> void:
-	if arena_music_player == null:
-		return
-	arena_music_player.stop()
-
-
 # ─── Arena / Background Management ────────────────────────────────────────────
 
 func _apply_arena(arena_index: int) -> void:
@@ -1277,7 +1080,6 @@ func _apply_arena(arena_index: int) -> void:
 
 	_resize_floor(ARENA_FLOOR_HALF_WIDTHS[arena_index])
 	_swap_background(arena_index)
-	_play_arena_music(arena_index)
 	_apply_arena_colors(arena_index)
 
 	match arena_index:
@@ -1390,8 +1192,7 @@ func _build_menu_asset_lookup() -> void:
 		var ext := file_name.get_extension().to_lower()
 		if ext not in ["png", "jpg", "jpeg", "webp"]:
 			continue
-		var normalized := _normalize_asset_name(file_name.get_basename())
-		menu_asset_lookup[normalized] = "res://assets/%s" % file_name
+		var normalized := _normalize_asset_name(file_name.get_basename()) menu_asset_lookup[normalized] = "res://assets/%s" % file_name
 
 
 func _get_menu_character_texture(character_index: int, expression: String) -> Texture2D:
@@ -1642,264 +1443,7 @@ func _bind_joy_motion_if_missing(action: String, axis: JoyAxis, axis_value: floa
 	InputMap.action_add_event(action, motion_event)
 
 
-# ─── Platform Visual Polish ───────────────────────────────────────────────────
-
-func _setup_platform_visual_extras() -> void:
-	_plat_highlight_rects.clear()
-	_plat_shadow_rects.clear()
-	var plat_visuals: Array[ColorRect] = [platform_1_visual, platform_2_visual, platform_3_visual]
-	for pv in plat_visuals:
-		var parent := pv.get_parent()
-
-		# Thin white highlight rim at the very top edge of each platform
-		var hl := ColorRect.new()
-		hl.offset_left = pv.offset_left + 4
-		hl.offset_top = pv.offset_top
-		hl.offset_right = pv.offset_right - 4
-		hl.offset_bottom = pv.offset_top + 2
-		hl.color = Color(1.0, 1.0, 1.0, 0.22)
-		parent.add_child(hl)
-		_plat_highlight_rects.append(hl)
-
-		# Subtle dark drop-shadow below the platform body
-		var sh := ColorRect.new()
-		sh.offset_left = pv.offset_left + 6
-		sh.offset_top = pv.offset_bottom
-		sh.offset_right = pv.offset_right - 6
-		sh.offset_bottom = pv.offset_bottom + 5
-		sh.color = Color(0.0, 0.0, 0.0, 0.35)
-		parent.add_child(sh)
-		_plat_shadow_rects.append(sh)
-
-
 # ─── Utility ──────────────────────────────────────────────────────────────────
-
-# ─── Settings Screen ──────────────────────────────────────────────────────────
-
-func _setup_audio_buses() -> void:
-	if AudioServer.get_bus_index("Music") == -1:
-		AudioServer.add_bus()
-		AudioServer.set_bus_name(AudioServer.get_bus_count() - 1, "Music")
-	if AudioServer.get_bus_index("SFX") == -1:
-		AudioServer.add_bus()
-		AudioServer.set_bus_name(AudioServer.get_bus_count() - 1, "SFX")
-	_apply_audio_volumes()
-
-
-func _apply_audio_volumes() -> void:
-	var bgm_idx := AudioServer.get_bus_index("Music")
-	if bgm_idx != -1:
-		AudioServer.set_bus_volume_db(bgm_idx, linear_to_db(maxf(settings_bgm_volume, 0.0001)))
-	var sfx_idx := AudioServer.get_bus_index("SFX")
-	if sfx_idx != -1:
-		AudioServer.set_bus_volume_db(sfx_idx, linear_to_db(maxf(settings_sfx_volume, 0.0001)))
-
-
-func _build_settings_screen() -> void:
-	_settings_layer = CanvasLayer.new()
-	_settings_layer.layer = 20
-	_settings_layer.visible = false
-	add_child(_settings_layer)
-
-	var backdrop := ColorRect.new()
-	backdrop.color = Color(0.0, 0.0, 0.0, 0.72)
-	backdrop.offset_right = VIEWPORT_W
-	backdrop.offset_bottom = VIEWPORT_H
-	_settings_layer.add_child(backdrop)
-
-	var pw := 520.0
-	var ph := 290.0
-	var px := (VIEWPORT_W - pw) / 2.0
-	var py := (VIEWPORT_H - ph) / 2.0
-
-	var panel_shadow := ColorRect.new()
-	panel_shadow.color = Color(0.0, 0.0, 0.0, 0.55)
-	panel_shadow.offset_left = px + 5
-	panel_shadow.offset_top = py + 5
-	panel_shadow.offset_right = px + pw + 5
-	panel_shadow.offset_bottom = py + ph + 5
-	_settings_layer.add_child(panel_shadow)
-
-	var panel := ColorRect.new()
-	panel.color = Color(0.06, 0.08, 0.12, 0.97)
-	panel.offset_left = px
-	panel.offset_top = py
-	panel.offset_right = px + pw
-	panel.offset_bottom = py + ph
-	_settings_layer.add_child(panel)
-
-	var top_bar := ColorRect.new()
-	top_bar.color = Color(0.25, 0.50, 0.95, 0.90)
-	top_bar.offset_left = px
-	top_bar.offset_top = py
-	top_bar.offset_right = px + pw
-	top_bar.offset_bottom = py + 4.0
-	_settings_layer.add_child(top_bar)
-
-	var title := _make_label("AUDIO SETTINGS", 26, Color.WHITE)
-	title.offset_left = px
-	title.offset_top = py + 14.0
-	title.offset_right = px + pw
-	title.offset_bottom = py + 54.0
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_settings_layer.add_child(title)
-
-	var divider := ColorRect.new()
-	divider.color = Color(0.30, 0.55, 1.0, 0.40)
-	divider.offset_left = px + 30.0
-	divider.offset_top = py + 58.0
-	divider.offset_right = px + pw - 30.0
-	divider.offset_bottom = py + 60.0
-	_settings_layer.add_child(divider)
-
-	_settings_row_frames.clear()
-	_settings_bar_fills.clear()
-	_settings_pct_labels.clear()
-
-	var row_labels := ["SOUNDTRACK", "SOUND EFFECTS"]
-	var row_y_offsets := [70.0, 160.0]
-
-	for i in 2:
-		var ry: float = py + row_y_offsets[i]
-
-		var frame := ColorRect.new()
-		frame.offset_left = px + 20.0
-		frame.offset_top = ry
-		frame.offset_right = px + pw - 20.0
-		frame.offset_bottom = ry + 68.0
-		frame.color = Color(0.20, 0.24, 0.32, 1.0)
-		_settings_layer.add_child(frame)
-		_settings_row_frames.append(frame)
-
-		var row_bg := ColorRect.new()
-		row_bg.color = Color(0.10, 0.12, 0.18, 1.0)
-		row_bg.offset_left = px + 22.0
-		row_bg.offset_top = ry + 2.0
-		row_bg.offset_right = px + pw - 22.0
-		row_bg.offset_bottom = ry + 66.0
-		_settings_layer.add_child(row_bg)
-
-		var row_lbl := _make_label(row_labels[i], 14, Color(0.65, 0.72, 0.88))
-		row_lbl.offset_left = px + 32.0
-		row_lbl.offset_top = ry + 6.0
-		row_lbl.offset_right = px + 240.0
-		row_lbl.offset_bottom = ry + 28.0
-		_settings_layer.add_child(row_lbl)
-
-		var track := ColorRect.new()
-		track.color = Color(0.08, 0.10, 0.16, 1.0)
-		track.offset_left = px + 32.0
-		track.offset_top = ry + 36.0
-		track.offset_right = px + pw - 68.0
-		track.offset_bottom = ry + 58.0
-		_settings_layer.add_child(track)
-
-		var fill := ColorRect.new()
-		fill.color = Color(0.25, 0.50, 0.95, 1.0)
-		fill.offset_left = px + 32.0
-		fill.offset_top = ry + 36.0
-		fill.offset_right = px + pw - 68.0  # updated by _update_settings_ui
-		fill.offset_bottom = ry + 58.0
-		_settings_layer.add_child(fill)
-		_settings_bar_fills.append(fill)
-
-		var pct_lbl := _make_label("100%", 14, Color.WHITE)
-		pct_lbl.offset_left = px + pw - 64.0
-		pct_lbl.offset_top = ry + 36.0
-		pct_lbl.offset_right = px + pw - 20.0
-		pct_lbl.offset_bottom = ry + 58.0
-		pct_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		_settings_layer.add_child(pct_lbl)
-		_settings_pct_labels.append(pct_lbl)
-
-	var hint := _make_label("← / → : Adjust   •   Jump : Switch Row   •   Attack / Esc : Close", 13, Color(0.40, 0.45, 0.55))
-	hint.offset_left = px
-	hint.offset_top = py + ph - 40.0
-	hint.offset_right = px + pw
-	hint.offset_bottom = py + ph - 14.0
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_settings_layer.add_child(hint)
-
-	_update_settings_ui()
-
-
-func _open_settings() -> void:
-	_settings_open = true
-	_settings_layer.visible = true
-	_update_settings_ui()
-
-
-func _close_settings() -> void:
-	_settings_open = false
-	_settings_layer.visible = false
-
-
-func _update_settings_ui() -> void:
-	if _settings_bar_fills.size() < 2:
-		return
-	var pw := 520.0
-	var px_off := (VIEWPORT_W - pw) / 2.0
-	var bar_w := pw - 32.0 - 68.0  # track width
-	var volumes := [settings_bgm_volume, settings_sfx_volume]
-	for i in 2:
-		_settings_bar_fills[i].offset_right = px_off + 32.0 + bar_w * volumes[i]
-		_settings_pct_labels[i].text = "%d%%" % int(round(volumes[i] * 100))
-		if i == _settings_cursor:
-			_settings_row_frames[i].color = Color(1.0, 0.82, 0.22, 1.0)
-			_settings_bar_fills[i].color = Color(1.0, 0.75, 0.20, 1.0)
-		else:
-			_settings_row_frames[i].color = Color(0.20, 0.24, 0.32, 1.0)
-			_settings_bar_fills[i].color = Color(0.25, 0.50, 0.95, 1.0)
-
-
-func _handle_settings_input() -> void:
-	# Close on Escape or any player's attack button
-	if Input.is_action_just_pressed("ui_cancel"):
-		_close_settings()
-		return
-	for i in 4:
-		var acts: Array = PLAYER_ACTION_SETS[i]
-		if Input.is_action_just_pressed(acts[3]):  # attack = close
-			_close_settings()
-			return
-
-	# Switch row via jump button or keyboard up/down
-	var row_changed := false
-	if Input.is_action_just_pressed("ui_up") or Input.is_action_just_pressed("ui_down"):
-		_settings_cursor = wrapi(_settings_cursor + 1, 0, 2)
-		row_changed = true
-	if not row_changed:
-		for i in 4:
-			var acts: Array = PLAYER_ACTION_SETS[i]
-			if Input.is_action_just_pressed(acts[2]):  # jump = cycle row
-				_settings_cursor = wrapi(_settings_cursor + 1, 0, 2)
-				row_changed = true
-				break
-
-	# Adjust volume via left/right
-	var step := 0.05
-	var vol_changed := false
-	for i in 4:
-		var acts: Array = PLAYER_ACTION_SETS[i]
-		if Input.is_action_just_pressed(acts[0]):  # left = decrease
-			if _settings_cursor == 0:
-				settings_bgm_volume = clampf(settings_bgm_volume - step, 0.0, 1.0)
-			else:
-				settings_sfx_volume = clampf(settings_sfx_volume - step, 0.0, 1.0)
-			vol_changed = true
-			break
-		elif Input.is_action_just_pressed(acts[1]):  # right = increase
-			if _settings_cursor == 0:
-				settings_bgm_volume = clampf(settings_bgm_volume + step, 0.0, 1.0)
-			else:
-				settings_sfx_volume = clampf(settings_sfx_volume + step, 0.0, 1.0)
-			vol_changed = true
-			break
-
-	if row_changed or vol_changed:
-		_apply_audio_volumes()
-		_update_settings_ui()
-
 
 func _make_label(text: String, font_size: int, color: Color = Color.WHITE) -> Label:
 	var lbl := Label.new()

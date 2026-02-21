@@ -17,8 +17,7 @@ const FAST_FALL_SPEED = 900.0
 const VAPOR_SPEED = 120.0
 const VAPOR_FLOAT = -80.0
 const VAPOR_MAX_TIME = 2.0
-const VAPOR_COOLDOWN = 2.0
-const VAPOR_READY_FLASH_TIME = 0.6
+
 const ATTACK_KNOCKBACK = 800.0
 const STOMP_BOUNCE = -350.0
 const DASH_SPEED = 600.0
@@ -52,8 +51,7 @@ const CHARGE_THRESHOLD = 0.4
 const PROJECTILE_COOLDOWN = 0.8
 var projectile_cooldown_timer := 0.0
 var stunned_timer := 0.0
-var vapor_cooldown_timer := 0.0
-var vapor_ready_flash_timer := 0.0
+var vapor_used := false
 var drop_through_timer := 0.0
 const DROP_THROUGH_TIME = 0.25
 var coyote_timer := 0.0
@@ -125,11 +123,7 @@ func _physics_process(delta: float) -> void:
 	invincible_timer = max(invincible_timer - delta, 0.0)
 	projectile_cooldown_timer = max(projectile_cooldown_timer - delta, 0.0)
 	dash_cooldown_timer = max(dash_cooldown_timer - delta, 0.0)
-	if vapor_cooldown_timer > 0.0:
-		vapor_cooldown_timer = max(vapor_cooldown_timer - delta, 0.0)
-		if vapor_cooldown_timer <= 0.0:
-			vapor_ready_flash_timer = VAPOR_READY_FLASH_TIME
-	vapor_ready_flash_timer = max(vapor_ready_flash_timer - delta, 0.0)
+
 
 	if drop_through_timer > 0.0:
 		drop_through_timer -= delta
@@ -140,9 +134,6 @@ func _physics_process(delta: float) -> void:
 		avatar.modulate.a = 0.5 if fmod(invincible_timer, 0.15) > 0.075 else 1.0
 	elif stunned_timer > 0.0:
 		avatar.modulate = Color(1.0, 0.3, 0.3, 0.9 if fmod(Time.get_ticks_msec() / 1000.0, 0.05) > 0.025 else 1.0)
-	elif vapor_ready_flash_timer > 0.0:
-		var flash_on := fmod(Time.get_ticks_msec() / 1000.0, 0.1) > 0.05
-		avatar.modulate = Color(1.0, 1.0, 0.5, 1.0) if flash_on else Color(1.0, 1.0, 1.0, 1.0)
 	else:
 		avatar.modulate = Color(1.0, 1.0, 1.0, 1.0)
 
@@ -200,8 +191,7 @@ func _reset_to_spawn() -> void:
 	if form != Form.WATER:
 		_exit_form()
 	stunned_timer = 0.0
-	vapor_cooldown_timer = 0.0
-	vapor_ready_flash_timer = 0.0
+	vapor_used = false
 	is_charging = false
 	$ChargeVisual.visible = false
 	charge_time = 0.0
@@ -245,7 +235,7 @@ func _handle_form_switch(_delta: float) -> void:
 			_exit_form()
 		return
 
-	if Input.is_action_just_pressed(action_vapor) and vapor_cooldown_timer <= 0.0:
+	if Input.is_action_just_pressed(action_vapor) and not vapor_used:
 		_enter_vapor()
 
 func _handle_attack(delta: float) -> void:
@@ -312,6 +302,7 @@ func _normal_physics(delta: float) -> void:
 		coyote_timer = COYOTE_TIME
 		has_double_jump = true
 		is_fast_falling = false
+		vapor_used = false
 	else:
 		coyote_timer = max(coyote_timer - delta, 0.0)
 
@@ -370,6 +361,7 @@ func _vapor_physics(_delta: float) -> void:
 		velocity.x = move_toward(velocity.x, 0, VAPOR_SPEED)
 
 func _enter_vapor() -> void:
+	vapor_used = true
 	form = Form.VAPOR
 	form_timer = VAPOR_MAX_TIME
 	avatar.visible = true
@@ -392,11 +384,9 @@ func _exit_vapor_timeout() -> void:
 	scale = Vector2(1.0, 1.0)
 	velocity = Vector2.ZERO
 	stunned_timer = 1.0
-	_start_vapor_cooldown()
 
 
 func _exit_form() -> void:
-	var was_vapor := form == Form.VAPOR
 	form = Form.WATER
 	if drop_through_timer > 0.0:
 		drop_through_timer = 0.0
@@ -409,13 +399,7 @@ func _exit_form() -> void:
 	puddle_body.visible = false
 	puddle_hitbox.monitoring = false
 	scale = Vector2(1.0, 1.0)
-	if was_vapor:
-		_start_vapor_cooldown()
 
-
-func _start_vapor_cooldown() -> void:
-	vapor_cooldown_timer = VAPOR_COOLDOWN
-	vapor_ready_flash_timer = 0.0
 
 func _check_stomp() -> void:
 	for i in get_slide_collision_count():
