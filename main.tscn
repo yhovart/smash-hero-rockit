@@ -1,9 +1,10 @@
-[gd_scene load_steps=8 format=3 uid="uid://bmain001"]
+[gd_scene load_steps=9 format=3 uid="uid://bmain001"]
 
 [ext_resource type="PackedScene" uid="uid://bplayer001" path="res://player/player.tscn" id="1_player"]
 [ext_resource type="Script" path="res://hud.gd" id="2_hud"]
 [ext_resource type="PackedScene" uid="uid://bhazard001" path="res://hazards/falling_hazard.tscn" id="3_hazard"]
 [ext_resource type="Script" path="res://hazards/hazard_spawner.gd" id="4_spawner"]
+[ext_resource type="Script" path="res://main.gd" id="5_main"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(800, 32)
@@ -15,6 +16,7 @@ size = Vector2(200, 16)
 size = Vector2(160, 16)
 
 [node name="Main" type="Node2D"]
+script = ExtResource("5_main")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(576, 324)
