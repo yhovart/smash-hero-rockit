@@ -20,10 +20,10 @@ const CHARACTER_COLORS: Array[Color] = [
 var is_character_select_active := true
 var p1_character_index := 0
 var p2_character_index := 1
-var p1_arena_index := 0
-var p2_arena_index := 0
+var arena_select_index := 0
 var p1_locked := false
 var p2_locked := false
+var is_arena_select_active := false
 var p1_round_wins := 0
 var p2_round_wins := 0
 var current_round := 1
@@ -57,6 +57,12 @@ var selected_arena_index := 0
 @onready var p2_arena_label: Label = $CharacterSelect/MenuPanel/P2Arena
 @onready var arena_hint: Label = $CharacterSelect/MenuPanel/ArenaHint
 @onready var menu_hint: Label = $CharacterSelect/MenuPanel/Hint
+@onready var arena_preview_title: Label = $CharacterSelect/MenuPanel/ArenaPreviewTitle
+@onready var arena_preview_text: Label = $CharacterSelect/MenuPanel/ArenaPreviewText
+@onready var arena_preview_thumb: ColorRect = $CharacterSelect/MenuPanel/ArenaPreviewThumb
+@onready var arena_preview_platform_1: ColorRect = $CharacterSelect/MenuPanel/ArenaPreviewThumb/Platform1
+@onready var arena_preview_platform_2: ColorRect = $CharacterSelect/MenuPanel/ArenaPreviewThumb/Platform2
+@onready var arena_preview_platform_3: ColorRect = $CharacterSelect/MenuPanel/ArenaPreviewThumb/Platform3
 @onready var end_screen: CanvasLayer = $EndScreen
 @onready var end_backdrop: ColorRect = $EndScreen/Backdrop
 @onready var end_title: Label = $EndScreen/Panel/Title
@@ -100,10 +106,10 @@ func _handle_in_fight_menu_input() -> void:
 
 func _initialize_character_select() -> void:
 	is_character_select_active = true
+	is_arena_select_active = false
 	p1_locked = false
 	p2_locked = false
-	p1_arena_index = 0
-	p2_arena_index = 0
+	arena_select_index = 0
 	hud.visible = false
 	_set_gameplay_enabled(false)
 	character_select.visible = true
@@ -121,6 +127,10 @@ func _set_gameplay_enabled(enabled: bool) -> void:
 
 
 func _handle_character_select_input() -> void:
+	if is_arena_select_active:
+		_handle_arena_select_input()
+		return
+
 	var changed := false
 
 	if not p1_locked:
@@ -129,12 +139,6 @@ func _handle_character_select_input() -> void:
 			changed = true
 		elif Input.is_action_just_pressed("p1_right"):
 			p1_character_index = wrapi(p1_character_index + 1, 0, CHARACTER_NAMES.size())
-			changed = true
-		if Input.is_action_just_pressed("p1_vapor"):
-			p1_arena_index = wrapi(p1_arena_index - 1, 0, ARENA_NAMES.size())
-			changed = true
-		elif Input.is_action_just_pressed("p1_puddle"):
-			p1_arena_index = wrapi(p1_arena_index + 1, 0, ARENA_NAMES.size())
 			changed = true
 		if Input.is_action_just_pressed("p1_attack") or Input.is_action_just_pressed("p1_jump"):
 			p1_locked = true
@@ -150,12 +154,6 @@ func _handle_character_select_input() -> void:
 		elif Input.is_action_just_pressed("p2_right"):
 			p2_character_index = wrapi(p2_character_index + 1, 0, CHARACTER_NAMES.size())
 			changed = true
-		if Input.is_action_just_pressed("p2_vapor"):
-			p2_arena_index = wrapi(p2_arena_index - 1, 0, ARENA_NAMES.size())
-			changed = true
-		elif Input.is_action_just_pressed("p2_puddle"):
-			p2_arena_index = wrapi(p2_arena_index + 1, 0, ARENA_NAMES.size())
-			changed = true
 		if Input.is_action_just_pressed("p2_attack") or Input.is_action_just_pressed("p2_jump"):
 			p2_locked = true
 			changed = true
@@ -167,23 +165,44 @@ func _handle_character_select_input() -> void:
 		_update_character_select_ui()
 
 	if p1_locked and p2_locked:
+		_enter_arena_submenu()
+
+
+func _enter_arena_submenu() -> void:
+	is_arena_select_active = true
+	_update_character_select_ui()
+
+
+func _handle_arena_select_input() -> void:
+	if _return_to_menu_pressed_any_player():
+		is_arena_select_active = false
+		p1_locked = false
+		p2_locked = false
+		_update_character_select_ui()
+		return
+
+	var changed := false
+	if Input.is_action_just_pressed("p1_left") or Input.is_action_just_pressed("p2_left"):
+		arena_select_index = wrapi(arena_select_index - 1, 0, ARENA_NAMES.size())
+		changed = true
+	elif Input.is_action_just_pressed("p1_right") or Input.is_action_just_pressed("p2_right"):
+		arena_select_index = wrapi(arena_select_index + 1, 0, ARENA_NAMES.size())
+		changed = true
+
+	if changed:
+		_update_character_select_ui()
+
+	if _confirm_pressed_any_player():
 		_start_match_with_selection()
 
 
 func _start_match_with_selection() -> void:
 	_apply_character_to_player(player_1, p1_character_index)
 	_apply_character_to_player(player_2, p2_character_index)
-	selected_arena_index = _resolve_selected_arena()
+	selected_arena_index = arena_select_index
 	_apply_arena(selected_arena_index)
 	character_select.visible = false
 	_start_best_of_three()
-
-
-func _resolve_selected_arena() -> int:
-	if p1_arena_index == p2_arena_index:
-		return p1_arena_index
-	var picks := [p1_arena_index, p2_arena_index]
-	return picks[randi() % picks.size()]
 
 
 func _start_best_of_three() -> void:
@@ -327,17 +346,63 @@ func _apply_character_to_player(player_node: Node, character_index: int) -> void
 
 
 func _update_character_select_ui() -> void:
+	if is_arena_select_active:
+		character_title.text = "Arena Select"
+		p1_choice.text = "P1  READY"
+		p2_choice.text = "READY  P2"
+		p1_swatch.visible = false
+		p2_swatch.visible = false
+		p1_arena_label.text = "Arena: %s" % ARENA_NAMES[arena_select_index]
+		p2_arena_label.text = "Shared Select"
+		p1_controls.text = "Arena: A / D\nStart: E or W\nBack: Shift"
+		p2_controls.text = "Arena: J / L\nStart: K or I\nBack: O"
+		arena_hint.text = "Both players can change the same arena value"
+		menu_hint.text = "Confirm: Attack/Jump • Back: Vapor"
+		arena_preview_title.visible = true
+		arena_preview_text.visible = true
+		arena_preview_thumb.visible = true
+		_update_arena_preview_ui()
+		return
+
 	character_title.text = "Character Select"
 	p1_choice.text = "P1  %s  %s" % [CHARACTER_NAMES[p1_character_index], "LOCKED" if p1_locked else "READY?"]
 	p2_choice.text = "%s  %s  P2" % ["LOCKED" if p2_locked else "READY?", CHARACTER_NAMES[p2_character_index]]
+	p1_swatch.visible = true
+	p2_swatch.visible = true
 	p1_swatch.color = CHARACTER_COLORS[p1_character_index]
 	p2_swatch.color = CHARACTER_COLORS[p2_character_index]
-	p1_arena_label.text = "Arena: %s" % ARENA_NAMES[p1_arena_index]
-	p2_arena_label.text = "Arena: %s" % ARENA_NAMES[p2_arena_index]
-	p1_controls.text = "Move: A / D\nJump: W\nAttack: E\nArena: Shift / F"
-	p2_controls.text = "Move: J / L\nJump: I\nAttack: K\nArena: O / ;"
-	arena_hint.text = "Arena vote: same pick = chosen, different picks = random between both"
+	p1_arena_label.text = "Arena: %s" % ARENA_NAMES[arena_select_index]
+	p2_arena_label.text = "Arena: %s" % ARENA_NAMES[arena_select_index]
+	p1_controls.text = "Move: A / D\nJump: W\nAttack: E"
+	p2_controls.text = "Move: J / L\nJump: I\nAttack: K"
+	arena_hint.text = "After both characters lock, arena selection opens with preview"
 	menu_hint.text = "Confirm: Attack/Jump • Unlock: Jump"
+	arena_preview_title.visible = false
+	arena_preview_text.visible = false
+	arena_preview_thumb.visible = false
+
+
+func _update_arena_preview_ui() -> void:
+	arena_preview_title.text = "Preview: %s" % ARENA_NAMES[arena_select_index]
+	arena_preview_text.text = "Small stage thumbnail"
+	arena_preview_platform_1.visible = true
+	arena_preview_platform_2.visible = true
+	arena_preview_platform_3.visible = true
+
+	match arena_select_index:
+		0:
+			arena_preview_platform_1.position = Vector2(18, 70)
+			arena_preview_platform_2.position = Vector2(96, 52)
+			arena_preview_platform_3.position = Vector2(40, 34)
+		1:
+			arena_preview_platform_1.position = Vector2(12, 74)
+			arena_preview_platform_2.position = Vector2(70, 58)
+			arena_preview_platform_3.position = Vector2(126, 42)
+		2:
+			arena_preview_platform_1.position = Vector2(12, 74)
+			arena_preview_platform_2.position = Vector2(70, 74)
+			arena_preview_platform_3.position = Vector2(126, 74)
+			arena_preview_platform_2.visible = false
 
 
 func _apply_arena(arena_index: int) -> void:
