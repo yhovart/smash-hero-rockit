@@ -1,0 +1,100 @@
+[gd_scene load_steps=2 format=3 uid="uid://cbeachbg01"]
+
+[ext_resource type="Script" path="res://background/beach_background.gd" id="1_script"]
+
+[node name="BeachBackground" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Sky" type="ColorRect" parent="."]
+offset_right = 1152.0
+offset_bottom = 290.0
+color = Color(0.47, 0.73, 0.92, 1)
+z_index = -50
+
+[node name="Cloud1" type="Polygon2D" parent="."]
+color = Color(1, 1, 1, 0.92)
+polygon = PackedVector2Array(220, 130, 245, 80, 300, 48, 360, 34, 430, 40, 485, 62, 510, 95, 500, 128, 470, 140, 270, 140, 235, 134)
+z_index = -48
+
+[node name="Cloud2" type="Polygon2D" parent="."]
+color = Color(0.96, 0.98, 1, 0.9)
+polygon = PackedVector2Array(680, 115, 710, 68, 765, 40, 830, 28, 885, 35, 925, 58, 948, 88, 938, 118, 910, 130, 730, 130, 698, 120)
+z_index = -48
+
+[node name="Cloud3" type="Polygon2D" parent="."]
+color = Color(1, 1, 1, 0.85)
+polygon = PackedVector2Array(20, 100, 42, 70, 80, 52, 125, 44, 168, 50, 198, 68, 212, 90, 204, 106, 178, 115, 48, 115, 28, 106)
+z_index = -48
+
+[node name="Cloud4" type="Polygon2D" parent="."]
+color = Color(0.97, 0.98, 1, 0.82)
+polygon = PackedVector2Array(540, 72, 558, 50, 585, 38, 618, 34, 648, 40, 668, 55, 676, 72, 670, 86, 650, 92, 560, 92, 545, 80)
+z_index = -48
+
+[node name="Ocean" type="ColorRect" parent="."]
+offset_top = 270.0
+offset_right = 1152.0
+offset_bottom = 445.0
+color = Color(0.15, 0.45, 0.70, 1)
+z_index = -42
+
+[node name="OceanBand1" type="ColorRect" parent="."]
+offset_top = 310.0
+offset_right = 1152.0
+offset_bottom = 345.0
+color = Color(0.20, 0.52, 0.76, 1)
+z_index = -41
+
+[node name="OceanBand2" type="ColorRect" parent="."]
+offset_top = 375.0
+offset_right = 1152.0
+offset_bottom = 415.0
+color = Color(0.30, 0.60, 0.82, 1)
+z_index = -41
+
+[node name="WaveLine1" type="Polygon2D" parent="."]
+color = Color(0.40, 0.68, 0.88, 1)
+polygon = PackedVector2Array(-20, 290, 130, 286, 280, 292, 430, 285, 580, 291, 730, 284, 880, 290, 1030, 286, 1172, 289, 1172, 298, 1030, 295, 880, 299, 730, 293, 580, 300, 430, 293, 280, 301, 130, 294, -20, 299)
+z_index = -39
+
+[node name="WaveLine2" type="Polygon2D" parent="."]
+color = Color(0.35, 0.62, 0.82, 1)
+polygon = PackedVector2Array(-20, 350, 160, 345, 340, 352, 520, 344, 700, 351, 880, 346, 1030, 351, 1172, 348, 1172, 358, 1030, 360, 880, 355, 700, 361, 520, 354, 340, 361, 160, 355, -20, 359)
+z_index = -39
+
+[node name="WaveLine3" type="Polygon2D" parent="."]
+color = Color(0.48, 0.74, 0.90, 1)
+polygon = PackedVector2Array(-20, 402, 140, 397, 300, 404, 460, 396, 620, 403, 780, 398, 940, 404, 1080, 399, 1172, 402, 1172, 413, 1080, 411, 940, 415, 780, 410, 620, 414, 460, 408, 300, 415, 140, 409, -20, 413)
+z_index = -39
+
+[node name="Foam" type="Polygon2D" parent="."]
+color = Color(0.92, 0.96, 1, 0.88)
+polygon = PackedVector2Array(-10, 432, 90, 428, 190, 434, 310, 426, 430, 433, 550, 427, 670, 434, 790, 428, 910, 434, 1030, 429, 1162, 432, 1162, 446, 1030, 443, 910, 448, 790, 442, 670, 448, 550, 441, 430, 447, 310, 440, 190, 448, 90, 442, -10, 446)
+z_index = -36
+
+[node name="Sand" type="ColorRect" parent="."]
+offset_top = 438.0
+offset_right = 1152.0
+offset_bottom = 648.0
+color = Color(0.87, 0.78, 0.55, 1)
+z_index = -35
+
+[node name="RockLeft" type="Polygon2D" parent="."]
+color = Color(0.42, 0.44, 0.47, 1)
+polygon = PackedVector2Array(50, 648, 56, 615, 76, 600, 96, 604, 116, 618, 128, 636, 134, 648)
+z_index = -28
+
+[node name="RockLeft2" type="Polygon2D" parent="."]
+color = Color(0.38, 0.40, 0.43, 1)
+polygon = PackedVector2Array(15, 648, 22, 626, 38, 616, 56, 620, 66, 632, 70, 648)
+z_index = -28
+
+[node name="RockRight" type="Polygon2D" parent="."]
+color = Color(0.40, 0.42, 0.45, 1)
+polygon = PackedVector2Array(1018, 648, 1028, 618, 1048, 604, 1068, 608, 1088, 622, 1098, 638, 1106, 648)
+z_index = -28
+
+[node name="RockRight2" type="Polygon2D" parent="."]
+color = Color(0.36, 0.38, 0.41, 1)
+polygon = PackedVector2Array(1082, 648, 1090, 628, 1104, 620, 1120, 624, 1130, 636, 1136, 648)
+z_index = -28

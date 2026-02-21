@@ -5,6 +5,31 @@ const P2_ACTIONS: Array[String] = ["p2_left", "p2_right", "p2_jump", "p2_attack"
 const CHARACTER_NAMES: Array[String] = ["Franck", "Yves-Henri", "Joel", "Maite"]
 const CHARACTER_ASSET_PREFIXES: Array[String] = ["franck", "Yves-Henri", "Joel", "Maite"]
 const ARENA_NAMES: Array[String] = ["Classic", "Sky Bridge", "Pitfall"]
+const ARENA_BG_SCENES: Array[String] = [
+	"res://background/forest_background.tscn",
+	"res://background/beach_background.tscn",
+	"res://background/cavern_background.tscn",
+]
+const ARENA_FLOOR_COLORS: Array[Color] = [
+	Color(0.35, 0.23, 0.14, 1),
+	Color(0.76, 0.65, 0.42, 1),
+	Color(0.25, 0.12, 0.08, 1),
+]
+const ARENA_MOSS_COLORS: Array[Color] = [
+	Color(0.2, 0.54, 0.22, 1),
+	Color(0.82, 0.72, 0.48, 1),
+	Color(0.55, 0.22, 0.05, 1),
+]
+const ARENA_PLAT_COLORS: Array[Color] = [
+	Color(0.4, 0.25, 0.14, 1),
+	Color(0.55, 0.42, 0.28, 1),
+	Color(0.3, 0.15, 0.10, 1),
+]
+const ARENA_PLAT_MOSS_COLORS: Array[Color] = [
+	Color(0.2, 0.56, 0.24, 1),
+	Color(0.62, 0.50, 0.34, 1),
+	Color(0.50, 0.20, 0.05, 1),
+]
 const RESULT_MIN_DISPLAY := 2.0
 const PLAYER_MAX_STOCKS := 3
 const SFX_CHEVRE_PATH := "res://assets/sounds/chevre.mp3"
@@ -31,6 +56,8 @@ var is_result_active := false
 var result_input_delay := 0.0
 var selected_arena_index := 0
 var menu_asset_lookup: Dictionary = {}
+var _current_bg: Node = null
+var _preview_bg: Node = null
 var p1_previous_stocks := PLAYER_MAX_STOCKS
 var p2_previous_stocks := PLAYER_MAX_STOCKS
 var chevre_player: AudioStreamPlayer
@@ -51,6 +78,12 @@ var victory_player: AudioStreamPlayer
 @onready var platform_1_visual: ColorRect = $Platform1/ColorRect
 @onready var platform_2_visual: ColorRect = $Platform2/ColorRect
 @onready var platform_3_visual: ColorRect = $Platform3/ColorRect
+@onready var floor_visual: ColorRect = $Floor/ColorRect
+@onready var floor_moss: ColorRect = $Floor/Moss
+@onready var platform_1_moss: ColorRect = $Platform1/Moss
+@onready var platform_2_moss: ColorRect = $Platform2/Moss
+@onready var platform_3_moss: ColorRect = $Platform3/Moss
+@onready var bg_container: Node2D = $BackgroundContainer
 @onready var character_select: CanvasLayer = $CharacterSelect
 @onready var character_title: Label = $CharacterSelect/MenuPanel/Title
 @onready var p1_choice: Label = $CharacterSelect/MenuPanel/P1Choice
@@ -68,6 +101,7 @@ var victory_player: AudioStreamPlayer
 @onready var arena_preview_title: Label = $CharacterSelect/MenuPanel/ArenaPreviewTitle
 @onready var arena_preview_text: Label = $CharacterSelect/MenuPanel/ArenaPreviewText
 @onready var arena_preview_thumb: ColorRect = $CharacterSelect/MenuPanel/ArenaPreviewThumb
+@onready var arena_preview_bg: Node2D = $CharacterSelect/MenuPanel/ArenaPreviewThumb/BgPreview
 @onready var arena_preview_platform_1: ColorRect = $CharacterSelect/MenuPanel/ArenaPreviewThumb/Platform1
 @onready var arena_preview_platform_2: ColorRect = $CharacterSelect/MenuPanel/ArenaPreviewThumb/Platform2
 @onready var arena_preview_platform_3: ColorRect = $CharacterSelect/MenuPanel/ArenaPreviewThumb/Platform3
@@ -104,6 +138,7 @@ func _ready() -> void:
 		player_2.connect("fell_out", Callable(self, "_on_player_fell_out"))
 	_setup_audio_players()
 	_build_menu_asset_lookup()
+	_swap_background(0)  # Show default background behind menus
 	end_screen.visible = false
 	_initialize_character_select()
 	_ensure_remote_fallback_bindings()
@@ -459,6 +494,7 @@ func _update_character_select_ui() -> void:
 	arena_preview_title.visible = false
 	arena_preview_text.visible = false
 	arena_preview_thumb.visible = false
+	_clear_preview_bg()
 
 
 func _build_menu_asset_lookup() -> void:
@@ -510,10 +546,19 @@ func _normalize_asset_name(asset_name: String) -> String:
 
 func _update_arena_preview_ui() -> void:
 	arena_preview_title.text = "Preview: %s" % ARENA_NAMES[arena_select_index]
-	arena_preview_text.text = "Small stage thumbnail"
+	arena_preview_text.text = ""
 	arena_preview_platform_1.visible = true
 	arena_preview_platform_2.visible = true
 	arena_preview_platform_3.visible = true
+
+	# Swap the mini background thumbnail
+	if _preview_bg != null:
+		_preview_bg.queue_free()
+		_preview_bg = null
+	var scene := load(ARENA_BG_SCENES[arena_select_index]) as PackedScene
+	if scene:
+		_preview_bg = scene.instantiate()
+		arena_preview_bg.add_child(_preview_bg)
 
 	match arena_select_index:
 		0:
@@ -531,10 +576,20 @@ func _update_arena_preview_ui() -> void:
 			arena_preview_platform_2.visible = false
 
 
+func _clear_preview_bg() -> void:
+	if _preview_bg != null:
+		_preview_bg.queue_free()
+		_preview_bg = null
+
+
 func _apply_arena(arena_index: int) -> void:
 	_set_platform_enabled(platform_1, platform_1_shape, platform_1_visual, true)
 	_set_platform_enabled(platform_2, platform_2_shape, platform_2_visual, true)
 	_set_platform_enabled(platform_3, platform_3_shape, platform_3_visual, true)
+
+	# Swap the gameplay background
+	_swap_background(arena_index)
+	_apply_arena_colors(arena_index)
 
 	match arena_index:
 		0:
@@ -550,6 +605,31 @@ func _apply_arena(arena_index: int) -> void:
 			platform_2.position = Vector2(576, 360)
 			platform_3.position = Vector2(832, 500)
 			_set_platform_enabled(platform_2, platform_2_shape, platform_2_visual, false)
+
+
+func _swap_background(arena_index: int) -> void:
+	if _current_bg != null:
+		_current_bg.queue_free()
+		_current_bg = null
+	var scene := load(ARENA_BG_SCENES[arena_index]) as PackedScene
+	if scene:
+		_current_bg = scene.instantiate()
+		bg_container.add_child(_current_bg)
+
+
+func _apply_arena_colors(arena_index: int) -> void:
+	var floor_c := ARENA_FLOOR_COLORS[arena_index]
+	var moss_c := ARENA_MOSS_COLORS[arena_index]
+	var plat_c := ARENA_PLAT_COLORS[arena_index]
+	var plat_m := ARENA_PLAT_MOSS_COLORS[arena_index]
+	floor_visual.color = floor_c
+	floor_moss.color = moss_c
+	platform_1_visual.color = plat_c
+	platform_1_moss.color = plat_m
+	platform_2_visual.color = plat_c
+	platform_2_moss.color = plat_m
+	platform_3_visual.color = plat_c
+	platform_3_moss.color = plat_m
 
 
 func _set_platform_enabled(platform_node: Node2D, platform_shape: CollisionShape2D, platform_visual: CanvasItem, enabled: bool) -> void:
