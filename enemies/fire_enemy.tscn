@@ -1,0 +1,64 @@
+[gd_scene load_steps=4 format=3 uid="uid://bfire001"]
+
+[ext_resource type="Script" path="res://enemies/fire_enemy.gd" id="1_script"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(20, 24)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hurt"]
+size = Vector2(24, 28)
+
+[node name="FireEnemy" type="CharacterBody2D" groups=["enemies"]]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_script")
+
+[node name="Body" type="Node2D" parent="."]
+
+[node name="FlameBase" type="Polygon2D" parent="Body"]
+color = Color(1.0, 0.4, 0.0, 1.0)
+polygon = PackedVector2Array(-10, 12, -12, 4, -11, -4, -8, -10, -4, -14, 0, -18, 4, -14, 8, -10, 11, -4, 12, 4, 10, 12)
+
+[node name="FlameInner" type="Polygon2D" parent="Body"]
+color = Color(1.0, 0.7, 0.0, 1.0)
+polygon = PackedVector2Array(-6, 12, -8, 4, -6, -4, -3, -9, 0, -12, 3, -9, 6, -4, 8, 4, 6, 12)
+
+[node name="FlameCore" type="Polygon2D" parent="Body"]
+color = Color(1.0, 1.0, 0.3, 1.0)
+polygon = PackedVector2Array(-3, 12, -4, 4, -2, -2, 0, -6, 2, -2, 4, 4, 3, 12)
+
+[node name="EyeLeft" type="Polygon2D" parent="Body"]
+color = Color(0.0, 0.0, 0.0, 1.0)
+polygon = PackedVector2Array(-5, 0, -4, -2, -3, 0, -4, 1)
+
+[node name="EyeRight" type="Polygon2D" parent="Body"]
+color = Color(0.0, 0.0, 0.0, 1.0)
+polygon = PackedVector2Array(3, 0, 4, -2, 5, 0, 4, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 2
+collision_mask = 5
+
+[node name="HurtShape" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("RectangleShape2D_hurt")
+
+[node name="SizzleParticles" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 30
+lifetime = 0.5
+one_shot = true
+explosiveness = 0.9
+direction = Vector2(0, -1)
+spread = 90.0
+gravity = Vector2(0, 40)
+initial_velocity_min = 40.0
+initial_velocity_max = 80.0
+scale_amount_min = 1.0
+scale_amount_max = 3.0
+color = Color(0.7, 0.7, 0.7, 0.6)
+
+[connection signal="area_entered" from="Hurtbox" to="." method="_on_hurtbox_area_entered"]
+[connection signal="body_entered" from="Hurtbox" to="." method="_on_hurtbox_body_entered"]
