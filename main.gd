@@ -354,8 +354,8 @@ func _update_character_select_ui() -> void:
 		p2_swatch.visible = false
 		p1_arena_label.text = "Arena: %s" % ARENA_NAMES[arena_select_index]
 		p2_arena_label.text = "Shared Select"
-		p1_controls.text = "Arena: A / D\nStart: E or W\nBack: Shift"
-		p2_controls.text = "Arena: J / L\nStart: K or I\nBack: O"
+		p1_controls.text = "Prev/Next Arena: A / D\nConfirm Arena: E or W\nBack: Shift"
+		p2_controls.text = "Prev/Next Arena: J / L\nConfirm Arena: K or I\nBack: O"
 		arena_hint.text = "Both players can change the same arena value"
 		menu_hint.text = "Confirm: Attack/Jump • Back: Vapor"
 		arena_preview_title.visible = true
@@ -373,8 +373,8 @@ func _update_character_select_ui() -> void:
 	p2_swatch.color = CHARACTER_COLORS[p2_character_index]
 	p1_arena_label.text = "Arena: %s" % ARENA_NAMES[arena_select_index]
 	p2_arena_label.text = "Arena: %s" % ARENA_NAMES[arena_select_index]
-	p1_controls.text = "Move: A / D\nJump: W\nAttack: E"
-	p2_controls.text = "Move: J / L\nJump: I\nAttack: K"
+	p1_controls.text = "Prev/Next Character: A / D\nLock Character: E or W\nUnlock: W"
+	p2_controls.text = "Prev/Next Character: J / L\nLock Character: K or I\nUnlock: I"
 	arena_hint.text = "After both characters lock, arena selection opens with preview"
 	menu_hint.text = "Confirm: Attack/Jump • Unlock: Jump"
 	arena_preview_title.visible = false
