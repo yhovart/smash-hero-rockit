@@ -484,9 +484,11 @@ func get_expression_texture(state: String) -> Texture2D:
 	return visual_textures.get(state, visual_textures.get("face", null))
 
 func _update_visual_state() -> void:
-	if invincible_timer > 0.0:
+	if is_fast_falling:
+		_update_avatar_texture("attack")
+	elif invincible_timer > 0.0:
 		_update_avatar_texture("dolor")
-	elif is_attacking or is_charging or is_fast_falling:
+	elif is_attacking or is_charging:
 		_update_avatar_texture("attack")
 	elif absf(velocity.x) > 5.0:
 		_update_avatar_texture("right" if facing >= 0.0 else "left")
