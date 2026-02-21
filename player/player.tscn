@@ -60,8 +60,9 @@ shape = SubResource("RectangleShape2D_puddle")
 [node name="AttackHitbox" type="Area2D" parent="."]
 position = Vector2(20, 0)
 collision_layer = 0
-collision_mask = 1
+collision_mask = 9
 monitoring = false
+monitorable = false
 
 [node name="AttackShape" type="CollisionShape2D" parent="AttackHitbox"]
 shape = SubResource("RectangleShape2D_attack")
@@ -79,3 +80,4 @@ color = Color(0.4, 0.7, 1.0, 0.5)
 polygon = PackedVector2Array(0, -8, 6, -4, 6, 4, 0, 8, -6, 4, -6, -4)
 
 [connection signal="body_entered" from="AttackHitbox" to="." method="_on_attack_hitbox_body_entered"]
+[connection signal="area_entered" from="AttackHitbox" to="." method="_on_attack_hitbox_area_entered"]

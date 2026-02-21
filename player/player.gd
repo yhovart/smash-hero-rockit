@@ -21,6 +21,7 @@ const HIT_INVINCIBILITY = 0.5
 @export var action_vapor := "p1_vapor"
 @export var action_puddle := "p1_puddle"
 @export var body_color := Color(0.15, 0.45, 0.95, 1.0)
+@export var spawn_position := Vector2(300, 500)
 
 var projectile_scene: PackedScene = preload("res://player/water_projectile.tscn")
 
@@ -83,6 +84,25 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
+	if global_position.y > 700.0:
+		_fall_death()
+
+func _fall_death() -> void:
+	died.emit()
+	hits_taken = 0
+	hit_changed.emit(hits_taken)
+	_reset_to_spawn()
+
+func _reset_to_spawn() -> void:
+	if form != Form.WATER:
+		_exit_form()
+	is_charging = false
+	$ChargeVisual.visible = false
+	charge_time = 0.0
+	invincible_timer = HIT_INVINCIBILITY
+	global_position = spawn_position
+	velocity = Vector2.ZERO
+
 func _handle_form_switch(delta: float) -> void:
 	if puddle_buffer > 0.0:
 		puddle_buffer -= delta
@@ -121,14 +141,14 @@ func _handle_attack(delta: float) -> void:
 		return
 
 	if is_charging:
-		charge_time += delta
-		$ChargeVisual.visible = true
-		$ChargeVisual.position.x = facing * 16.0
-		var charge_ratio := clampf(charge_time / CHARGE_THRESHOLD, 0.0, 1.0)
-		$ChargeVisual.scale = Vector2.ONE * (0.5 + charge_ratio * 0.8)
-		$ChargeVisual.modulate.a = 0.4 + charge_ratio * 0.6
-
-		if Input.is_action_just_released(action_attack):
+		if Input.is_action_pressed(action_attack):
+			charge_time += delta
+			$ChargeVisual.visible = true
+			$ChargeVisual.position.x = facing * 16.0
+			var charge_ratio := clampf(charge_time / CHARGE_THRESHOLD, 0.0, 1.0)
+			$ChargeVisual.scale = Vector2.ONE * (0.5 + charge_ratio * 0.8)
+			$ChargeVisual.modulate.a = 0.4 + charge_ratio * 0.6
+		else:
 			is_charging = false
 			$ChargeVisual.visible = false
 			if charge_time >= CHARGE_THRESHOLD and projectile_cooldown_timer <= 0.0:
@@ -243,8 +263,12 @@ func take_hit(_damage: int, knockback_dir: float) -> void:
 		died.emit()
 		hits_taken = 0
 		hit_changed.emit(hits_taken)
-		global_position = Vector2(576, 400)
-		velocity = Vector2.ZERO
+		_reset_to_spawn()
+
+func _on_attack_hitbox_area_entered(area: Area2D) -> void:
+	if area.has_method("reflect") and area.owner_node != self:
+		area.reflect(self)
+		area.modulate = body_color.lightened(0.3)
 
 func _on_attack_hitbox_body_entered(other: Node2D) -> void:
 	if other == self or not other.is_in_group("player"):
