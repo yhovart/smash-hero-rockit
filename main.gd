@@ -19,6 +19,7 @@ const CHARACTER_NAMES: Array[String] = [
 	"Roxane",
 	"Tommy",
 	"Ash",
+	"JW",
 ]
 const CHARACTER_ASSET_PREFIXES: Array[String] = [
 	"franck",
@@ -31,6 +32,7 @@ const CHARACTER_ASSET_PREFIXES: Array[String] = [
 	"Roxane",
 	"Tommy",
 	"Ash",
+	"JW",
 ]
 const CHARACTER_COLORS: Array[Color] = [
 	Color(0.15, 0.45, 0.95, 1.0),
@@ -43,6 +45,7 @@ const CHARACTER_COLORS: Array[Color] = [
 	Color(0.86, 0.32, 0.54, 1.0),
 	Color(0.28, 0.84, 0.58, 1.0),
 	Color(0.7, 0.7, 0.75, 1.0),
+	Color(0.58, 0.45, 0.95, 1.0),
 ]
 const PLAYER_LABEL_COLORS: Array[Color] = [
 	Color(0.5, 0.7, 1.0, 1.0),
