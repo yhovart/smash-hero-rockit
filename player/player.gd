@@ -246,7 +246,7 @@ func _handle_attack(delta: float) -> void:
 
 func _melee_attack() -> void:
 	is_attacking = true
-	attack_timer = 0.35
+	attack_timer = 0.5
 	attack_hitbox.monitoring = true
 	attack_hitbox.position.x = facing * 20.0
 	$AttackVisual.visible = true

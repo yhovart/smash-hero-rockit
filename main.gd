@@ -556,6 +556,15 @@ func _ensure_remote_fallback_bindings() -> void:
 	_bind_joy_motion_if_missing("p1_left", JOY_AXIS_LEFT_X, -1.0, 0)
 	_bind_joy_motion_if_missing("p1_right", JOY_AXIS_LEFT_X, 1.0, 0)
 
+	_bind_joy_button_if_missing("p2_left", JOY_BUTTON_DPAD_LEFT, 1)
+	_bind_joy_button_if_missing("p2_right", JOY_BUTTON_DPAD_RIGHT, 1)
+	_bind_joy_button_if_missing("p2_jump", JOY_BUTTON_A, 1)
+	_bind_joy_button_if_missing("p2_attack", JOY_BUTTON_X, 1)
+	_bind_joy_button_if_missing("p2_vapor", JOY_BUTTON_Y, 1)
+	_bind_joy_button_if_missing("p2_puddle", JOY_BUTTON_B, 1)
+	_bind_joy_motion_if_missing("p2_left", JOY_AXIS_LEFT_X, -1.0, 1)
+	_bind_joy_motion_if_missing("p2_right", JOY_AXIS_LEFT_X, 1.0, 1)
+
 
 func _bind_key_if_missing(action: String, keycode: Key) -> void:
 	for event in InputMap.action_get_events(action):
