@@ -68,6 +68,7 @@ signal stock_changed(stocks: int)
 signal eliminated
 signal fell_out(next_stocks: int)
 signal got_hit(next_stocks: int, caused_stock_loss: bool)
+signal jumped
 
 var stocks := MAX_STOCKS
 
@@ -303,11 +304,13 @@ func _normal_physics(delta: float) -> void:
 		jump_buffer_timer = 0.0
 		coyote_timer = 0.0
 		is_fast_falling = false
+		jumped.emit()
 	elif jump_buffer_timer > 0.0 and not can_jump and has_double_jump:
 		velocity.y = DOUBLE_JUMP_VELOCITY
 		jump_buffer_timer = 0.0
 		has_double_jump = false
 		is_fast_falling = false
+		jumped.emit()
 
 	var direction := Input.get_axis(action_left, action_right)
 	var accel: float

@@ -54,6 +54,7 @@ const SFX_CHEVRE_PATH := "res://assets/sounds/chevre.mp3"
 const SFX_WILHELM_PATH := "res://assets/sounds/wilhelm.mp3"
 const SFX_FINISH_HIM_PATH := "res://assets/sounds/finish-him.mp3"
 const SFX_VICTORY_PATH := "res://assets/sounds/victoryff.swf.mp3"
+const SFX_JUMP_PATH := "res://assets/sounds/jump.mp3"
 const SPAWN_POSITIONS: Dictionary = {
 	2: [Vector2(300, 500), Vector2(850, 500)],
 	3: [Vector2(200, 500), Vector2(576, 500), Vector2(950, 500)],
@@ -99,6 +100,7 @@ var chevre_player: AudioStreamPlayer
 var wilhelm_player: AudioStreamPlayer
 var finish_him_player: AudioStreamPlayer
 var victory_player: AudioStreamPlayer
+var jump_player: AudioStreamPlayer
 
 # ─── Scene References ──────────────────────────────────────────────────────────
 
@@ -170,6 +172,8 @@ func _ready() -> void:
 			p.connect("got_hit", _on_player_got_hit)
 		if p.has_signal("fell_out"):
 			p.connect("fell_out", _on_player_fell_out)
+		if p.has_signal("jumped"):
+			p.connect("jumped", _on_player_jumped)
 	_setup_audio_players()
 	_build_menu_asset_lookup()
 	_swap_background(0)
@@ -819,6 +823,12 @@ func _on_player_fell_out(next_stocks: int) -> void:
 	_play_sound(chevre_player)
 
 
+func _on_player_jumped() -> void:
+	if menu_phase != MenuPhase.NONE or is_result_active:
+		return
+	_play_sound(jump_player)
+
+
 func _handle_game_end(winner_index: int) -> void:
 	is_result_active = true
 	result_input_delay = RESULT_MIN_DISPLAY
@@ -912,6 +922,7 @@ func _setup_audio_players() -> void:
 	wilhelm_player = _create_sfx_player(_load_mp3_stream(SFX_WILHELM_PATH))
 	finish_him_player = _create_sfx_player(_load_mp3_stream(SFX_FINISH_HIM_PATH))
 	victory_player = _create_sfx_player(_load_mp3_stream(SFX_VICTORY_PATH))
+	jump_player = _create_sfx_player(_load_mp3_stream(SFX_JUMP_PATH))
 
 
 func _create_sfx_player(stream: AudioStream) -> AudioStreamPlayer:
@@ -933,6 +944,7 @@ func _load_mp3_stream(path: String) -> AudioStream:
 func _play_sound(player: AudioStreamPlayer) -> void:
 	if player == null or player.stream == null:
 		return
+	player.stop()
 	player.play()
 
 
