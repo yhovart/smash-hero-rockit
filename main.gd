@@ -3,6 +3,7 @@ extends Node2D
 const P1_ACTIONS: Array[String] = ["p1_left", "p1_right", "p1_jump", "p1_attack", "p1_vapor", "p1_puddle"]
 const P2_ACTIONS: Array[String] = ["p2_left", "p2_right", "p2_jump", "p2_attack", "p2_vapor", "p2_puddle"]
 const CHARACTER_NAMES: Array[String] = ["Azure", "Crimson", "Emerald", "Gold"]
+const ARENA_NAMES: Array[String] = ["Classic", "Sky Bridge", "Pitfall"]
 const WINS_TO_TAKE_MATCH := 2
 const ROUND_RESULT_MIN_DISPLAY := 2.0
 const MATCH_RESULT_MIN_DISPLAY := 2.5
@@ -18,6 +19,8 @@ const CHARACTER_COLORS: Array[Color] = [
 var is_character_select_active := true
 var p1_character_index := 0
 var p2_character_index := 1
+var p1_arena_index := 0
+var p2_arena_index := 0
 var p1_locked := false
 var p2_locked := false
 var p1_round_wins := 0
@@ -26,11 +29,21 @@ var current_round := 1
 var is_round_result_active := false
 var is_match_over := false
 var round_result_input_delay := 0.0
+var selected_arena_index := 0
 
 @onready var player_1: Node = $Player1
 @onready var player_2: Node = $Player2
 @onready var hud: CanvasLayer = $HUD
 @onready var hazard_spawner: Node = $HazardSpawner
+@onready var platform_1: Node2D = $Platform1
+@onready var platform_2: Node2D = $Platform2
+@onready var platform_3: Node2D = $Platform3
+@onready var platform_1_shape: CollisionShape2D = $Platform1/CollisionShape2D
+@onready var platform_2_shape: CollisionShape2D = $Platform2/CollisionShape2D
+@onready var platform_3_shape: CollisionShape2D = $Platform3/CollisionShape2D
+@onready var platform_1_visual: ColorRect = $Platform1/ColorRect
+@onready var platform_2_visual: ColorRect = $Platform2/ColorRect
+@onready var platform_3_visual: ColorRect = $Platform3/ColorRect
 @onready var character_select: CanvasLayer = $CharacterSelect
 @onready var character_title: Label = $CharacterSelect/MenuPanel/Title
 @onready var p1_choice: Label = $CharacterSelect/MenuPanel/P1Choice
@@ -39,6 +52,9 @@ var round_result_input_delay := 0.0
 @onready var p2_swatch: ColorRect = $CharacterSelect/MenuPanel/P2Swatch
 @onready var p1_controls: Label = $CharacterSelect/MenuPanel/P1Controls
 @onready var p2_controls: Label = $CharacterSelect/MenuPanel/P2Controls
+@onready var p1_arena_label: Label = $CharacterSelect/MenuPanel/P1Arena
+@onready var p2_arena_label: Label = $CharacterSelect/MenuPanel/P2Arena
+@onready var arena_hint: Label = $CharacterSelect/MenuPanel/ArenaHint
 @onready var menu_hint: Label = $CharacterSelect/MenuPanel/Hint
 @onready var end_screen: CanvasLayer = $EndScreen
 @onready var end_backdrop: ColorRect = $EndScreen/Backdrop
@@ -49,6 +65,7 @@ var round_result_input_delay := 0.0
 @onready var winner_face: TextureRect = $EndScreen/Panel/WinnerFace
 @onready var loser_face: TextureRect = $EndScreen/Panel/LoserFace
 @onready var end_score: Label = $EndScreen/Panel/Score
+@onready var end_arena: Label = $EndScreen/Panel/Arena
 @onready var end_hint: Label = $EndScreen/Panel/Hint
 
 
@@ -70,14 +87,22 @@ func _process(delta: float) -> void:
 		_handle_round_result_input()
 		return
 	if not is_character_select_active:
+		_handle_in_fight_menu_input()
 		return
 	_handle_character_select_input()
+
+
+func _handle_in_fight_menu_input() -> void:
+	if Input.is_action_just_pressed("ui_cancel"):
+		_return_to_main_menu()
 
 
 func _initialize_character_select() -> void:
 	is_character_select_active = true
 	p1_locked = false
 	p2_locked = false
+	p1_arena_index = 0
+	p2_arena_index = 0
 	hud.visible = false
 	_set_gameplay_enabled(false)
 	character_select.visible = true
@@ -104,10 +129,16 @@ func _handle_character_select_input() -> void:
 		elif Input.is_action_just_pressed("p1_right"):
 			p1_character_index = wrapi(p1_character_index + 1, 0, CHARACTER_NAMES.size())
 			changed = true
+		if Input.is_action_just_pressed("p1_vapor"):
+			p1_arena_index = wrapi(p1_arena_index - 1, 0, ARENA_NAMES.size())
+			changed = true
+		elif Input.is_action_just_pressed("p1_puddle"):
+			p1_arena_index = wrapi(p1_arena_index + 1, 0, ARENA_NAMES.size())
+			changed = true
 		if Input.is_action_just_pressed("p1_attack") or Input.is_action_just_pressed("p1_jump"):
 			p1_locked = true
 			changed = true
-	elif Input.is_action_just_pressed("p1_puddle"):
+	elif Input.is_action_just_pressed("p1_jump"):
 		p1_locked = false
 		changed = true
 
@@ -118,10 +149,16 @@ func _handle_character_select_input() -> void:
 		elif Input.is_action_just_pressed("p2_right"):
 			p2_character_index = wrapi(p2_character_index + 1, 0, CHARACTER_NAMES.size())
 			changed = true
+		if Input.is_action_just_pressed("p2_vapor"):
+			p2_arena_index = wrapi(p2_arena_index - 1, 0, ARENA_NAMES.size())
+			changed = true
+		elif Input.is_action_just_pressed("p2_puddle"):
+			p2_arena_index = wrapi(p2_arena_index + 1, 0, ARENA_NAMES.size())
+			changed = true
 		if Input.is_action_just_pressed("p2_attack") or Input.is_action_just_pressed("p2_jump"):
 			p2_locked = true
 			changed = true
-	elif Input.is_action_just_pressed("p2_puddle"):
+	elif Input.is_action_just_pressed("p2_jump"):
 		p2_locked = false
 		changed = true
 
@@ -135,8 +172,17 @@ func _handle_character_select_input() -> void:
 func _start_match_with_selection() -> void:
 	_apply_character_to_player(player_1, p1_character_index)
 	_apply_character_to_player(player_2, p2_character_index)
+	selected_arena_index = _resolve_selected_arena()
+	_apply_arena(selected_arena_index)
 	character_select.visible = false
 	_start_best_of_three()
+
+
+func _resolve_selected_arena() -> int:
+	if p1_arena_index == p2_arena_index:
+		return p1_arena_index
+	var picks := [p1_arena_index, p2_arena_index]
+	return picks[randi() % picks.size()]
 
 
 func _start_best_of_three() -> void:
@@ -185,12 +231,12 @@ func _handle_round_end(winner_player: int) -> void:
 	if p1_round_wins >= WINS_TO_TAKE_MATCH or p2_round_wins >= WINS_TO_TAKE_MATCH:
 		is_match_over = true
 		round_result_input_delay = MATCH_RESULT_MIN_DISPLAY
-		_show_end_screen("DEATH SCREEN", "%s WINS THE MATCH" % winner_name, winner_color, "Match Score %d - %d" % [p1_round_wins, p2_round_wins], "Press Attack or Jump to start a rematch (best of 3)")
+		_show_end_screen("DEATH SCREEN", "%s WINS THE MATCH" % winner_name, winner_color, "Match Score %d - %d" % [p1_round_wins, p2_round_wins], "Attack/Jump: Rematch   Vapor: Main Menu")
 		_update_end_screen_faces(winner_player)
 	else:
 		is_match_over = false
 		round_result_input_delay = ROUND_RESULT_MIN_DISPLAY
-		_show_end_screen("DEATH SCREEN", "%s WINS ROUND %d" % [winner_name, current_round], winner_color, "Match Score %d - %d" % [p1_round_wins, p2_round_wins], "Press Attack or Jump for next round")
+		_show_end_screen("DEATH SCREEN", "%s WINS ROUND %d" % [winner_name, current_round], winner_color, "Match Score %d - %d" % [p1_round_wins, p2_round_wins], "Attack/Jump: Next Round   Vapor: Main Menu")
 		_update_end_screen_faces(winner_player)
 
 
@@ -199,6 +245,7 @@ func _show_end_screen(title: String, subtitle: String, tint: Color, score_text: 
 	end_title.text = title
 	end_subtitle.text = subtitle
 	end_score.text = score_text
+	end_arena.text = "Arena: %s" % ARENA_NAMES[selected_arena_index]
 	end_hint.text = hint_text
 	end_backdrop.color = tint
 
@@ -229,6 +276,9 @@ func _get_player_expression_texture(player_node: Node, expression: String) -> Te
 func _handle_round_result_input() -> void:
 	if round_result_input_delay > 0.0:
 		return
+	if _return_to_menu_pressed_any_player():
+		_return_to_main_menu()
+		return
 	if not _confirm_pressed_any_player():
 		return
 
@@ -241,6 +291,22 @@ func _handle_round_result_input() -> void:
 	end_screen.visible = false
 	_reset_players_for_round()
 	_set_gameplay_enabled(true)
+
+
+func _return_to_menu_pressed_any_player() -> bool:
+	return Input.is_action_just_pressed("p1_vapor") \
+		or Input.is_action_just_pressed("p2_vapor")
+
+
+func _return_to_main_menu() -> void:
+	is_round_result_active = false
+	is_match_over = false
+	round_result_input_delay = 0.0
+	p1_round_wins = 0
+	p2_round_wins = 0
+	current_round = 1
+	end_screen.visible = false
+	_initialize_character_select()
 
 
 func _confirm_pressed_any_player() -> bool:
@@ -262,9 +328,40 @@ func _update_character_select_ui() -> void:
 	p2_choice.text = "%s  %s  P2" % ["LOCKED" if p2_locked else "READY?", CHARACTER_NAMES[p2_character_index]]
 	p1_swatch.color = CHARACTER_COLORS[p1_character_index]
 	p2_swatch.color = CHARACTER_COLORS[p2_character_index]
-	p1_controls.text = "Move: A / D\nJump: W\nAttack: E\nVapor: Shift\nPuddle: F"
-	p2_controls.text = "Move: J / L\nJump: I\nAttack: K\nVapor: O\nPuddle: ;"
-	menu_hint.text = "Each side picks separately • Confirm: Attack/Jump • Unlock: Puddle"
+	p1_arena_label.text = "Arena: %s" % ARENA_NAMES[p1_arena_index]
+	p2_arena_label.text = "Arena: %s" % ARENA_NAMES[p2_arena_index]
+	p1_controls.text = "Move: A / D\nJump: W\nAttack: E\nArena: Shift / F"
+	p2_controls.text = "Move: J / L\nJump: I\nAttack: K\nArena: O / ;"
+	arena_hint.text = "Arena vote: same pick = chosen, different picks = random between both"
+	menu_hint.text = "Confirm: Attack/Jump • Unlock: Jump"
+
+
+func _apply_arena(arena_index: int) -> void:
+	_set_platform_enabled(platform_1, platform_1_shape, platform_1_visual, true)
+	_set_platform_enabled(platform_2, platform_2_shape, platform_2_visual, true)
+	_set_platform_enabled(platform_3, platform_3_shape, platform_3_visual, true)
+
+	match arena_index:
+		0:
+			platform_1.position = Vector2(350, 480)
+			platform_2.position = Vector2(700, 380)
+			platform_3.position = Vector2(450, 280)
+		1:
+			platform_1.position = Vector2(300, 500)
+			platform_2.position = Vector2(576, 420)
+			platform_3.position = Vector2(850, 340)
+		2:
+			platform_1.position = Vector2(320, 500)
+			platform_2.position = Vector2(576, 360)
+			platform_3.position = Vector2(832, 500)
+			_set_platform_enabled(platform_2, platform_2_shape, platform_2_visual, false)
+
+
+func _set_platform_enabled(platform_node: Node2D, platform_shape: CollisionShape2D, platform_visual: CanvasItem, enabled: bool) -> void:
+	platform_node.visible = enabled
+	platform_shape.disabled = not enabled
+	if platform_visual != null:
+		platform_visual.visible = enabled
 
 
 func _on_joy_connection_changed(_device: int, _connected: bool) -> void:

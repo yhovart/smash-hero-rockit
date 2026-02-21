@@ -107,8 +107,8 @@ color = Color(1, 1, 1, 0.15)
 offset_left = 24.0
 offset_top = 138.0
 offset_right = 282.0
-offset_bottom = 272.0
-text = "Move: A / D\nJump: W\nAttack: E\nVapor: Shift\nPuddle: F"
+offset_bottom = 246.0
+text = "Move: A / D\nJump: W\nAttack: E\nArena: Shift / F"
 theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0.82, 0.9, 1, 1)
 
@@ -116,18 +116,46 @@ theme_override_colors/font_color = Color(0.82, 0.9, 1, 1)
 offset_left = 310.0
 offset_top = 138.0
 offset_right = 568.0
-offset_bottom = 272.0
-text = "Move: J / L\nJump: I\nAttack: K\nVapor: O\nPuddle: ;"
+offset_bottom = 246.0
+text = "Move: J / L\nJump: I\nAttack: K\nArena: O / ;"
 theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(1, 0.85, 0.8, 1)
 horizontal_alignment = 2
 
+[node name="P1Arena" type="Label" parent="CharacterSelect/MenuPanel"]
+offset_left = 24.0
+offset_top = 256.0
+offset_right = 282.0
+offset_bottom = 286.0
+text = "Arena: Classic"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.6, 0.85, 1, 1)
+
+[node name="P2Arena" type="Label" parent="CharacterSelect/MenuPanel"]
+offset_left = 310.0
+offset_top = 256.0
+offset_right = 568.0
+offset_bottom = 286.0
+text = "Arena: Classic"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1, 0.72, 0.65, 1)
+horizontal_alignment = 2
+
+[node name="ArenaHint" type="Label" parent="CharacterSelect/MenuPanel"]
+offset_left = 24.0
+offset_top = 292.0
+offset_right = 568.0
+offset_bottom = 320.0
+text = "Arena vote: same pick = chosen, different picks = random"
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+
 [node name="Hint" type="Label" parent="CharacterSelect/MenuPanel"]
 offset_left = 24.0
-offset_top = 294.0
+offset_top = 322.0
 offset_right = 568.0
-offset_bottom = 334.0
-text = "Move: Left/Right   Confirm: Attack or Jump   Change: Puddle"
+offset_bottom = 344.0
+text = "Confirm: Attack/Jump   Unlock: Jump"
 theme_override_font_sizes/font_size = 14
 horizontal_alignment = 1
 
@@ -209,6 +237,15 @@ text = "Match Score 0 - 0"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 24
 
+[node name="Arena" type="Label" parent="EndScreen/Panel"]
+offset_left = 22.0
+offset_top = 390.0
+offset_right = 700.0
+offset_bottom = 420.0
+text = "Arena: Classic"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18
+
 [node name="Hint" type="Label" parent="EndScreen/Panel"]
 offset_left = 22.0
 offset_top = 404.0
@@ -279,7 +316,8 @@ offset_right = 286.0
 offset_bottom = 76.0
 text = "P1 (Blue)
 Move: A / D    Jump: W    Attack: E
-Hold E: Projectile    Vapor: Shift    Puddle: F"
+Hold E: Projectile    Vapor: Shift    Puddle: F
+Menu: Esc"
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.5, 0.7, 1.0, 1.0)
 
@@ -290,7 +328,8 @@ offset_right = 582.0
 offset_bottom = 76.0
 text = "P2 (Red)
 Move: J / L    Jump: I    Attack: K
-Hold K: Projectile    Vapor: O    Puddle: ;"
+Hold K: Projectile    Vapor: O    Puddle: ;
+Menu: Esc"
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(1.0, 0.5, 0.45, 1.0)
 horizontal_alignment = 2
