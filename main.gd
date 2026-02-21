@@ -516,7 +516,7 @@ func _next_available_char(player_idx: int, current: int, direction: int) -> int:
 
 func _handle_char_input() -> void:
 	if Input.is_action_just_pressed("ui_cancel"):
-		get_tree().quit()
+		_show_phase(MenuPhase.PLAYER_COUNT)
 		return
 
 	# Vapor from any player: go back to player count
@@ -695,7 +695,7 @@ func _update_arena_ui() -> void:
 
 func _handle_arena_input() -> void:
 	if Input.is_action_just_pressed("ui_cancel"):
-		get_tree().quit()
+		_show_phase(MenuPhase.CHARACTER_SELECT)
 		return
 
 	# Vapor from any player: go back to character select
