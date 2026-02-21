@@ -131,6 +131,93 @@ text = "Move: Left/Right   Confirm: Attack or Jump   Change: Puddle"
 theme_override_font_sizes/font_size = 14
 horizontal_alignment = 1
 
+[node name="EndScreen" type="CanvasLayer" parent="."]
+visible = false
+
+[node name="Backdrop" type="ColorRect" parent="EndScreen"]
+offset_right = 1152.0
+offset_bottom = 648.0
+mouse_filter = 2
+color = Color(0.85, 0.1, 0.1, 0.88)
+
+[node name="Panel" type="Panel" parent="EndScreen"]
+offset_left = 214.0
+offset_top = 166.0
+offset_right = 938.0
+offset_bottom = 482.0
+
+[node name="Title" type="Label" parent="EndScreen/Panel"]
+offset_left = 22.0
+offset_top = 24.0
+offset_right = 700.0
+offset_bottom = 88.0
+text = "DEATH SCREEN"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 52
+
+[node name="SubTitle" type="Label" parent="EndScreen/Panel"]
+offset_left = 22.0
+offset_top = 104.0
+offset_right = 700.0
+offset_bottom = 154.0
+text = "P1 WINS ROUND 1"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 32
+
+[node name="WinnerTag" type="Label" parent="EndScreen/Panel"]
+offset_left = 106.0
+offset_top = 154.0
+offset_right = 262.0
+offset_bottom = 184.0
+text = "WINNER"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.8, 1, 0.8, 1)
+
+[node name="LoserTag" type="Label" parent="EndScreen/Panel"]
+offset_left = 462.0
+offset_top = 154.0
+offset_right = 618.0
+offset_bottom = 184.0
+text = "LOSER"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(1, 0.75, 0.75, 1)
+
+[node name="WinnerFace" type="TextureRect" parent="EndScreen/Panel"]
+expand_mode = 1
+stretch_mode = 5
+offset_left = 108.0
+offset_top = 186.0
+offset_right = 260.0
+offset_bottom = 338.0
+
+[node name="LoserFace" type="TextureRect" parent="EndScreen/Panel"]
+expand_mode = 1
+stretch_mode = 5
+offset_left = 464.0
+offset_top = 186.0
+offset_right = 616.0
+offset_bottom = 338.0
+
+[node name="Score" type="Label" parent="EndScreen/Panel"]
+offset_left = 22.0
+offset_top = 192.0
+offset_right = 700.0
+offset_bottom = 234.0
+text = "Match Score 0 - 0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 24
+
+[node name="Hint" type="Label" parent="EndScreen/Panel"]
+offset_left = 22.0
+offset_top = 256.0
+offset_right = 700.0
+offset_bottom = 298.0
+text = "Press Attack or Jump for next round"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+
 [node name="P1Shields" type="HBoxContainer" parent="HUD"]
 offset_left = 16.0
 offset_top = 12.0

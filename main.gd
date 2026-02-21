@@ -3,6 +3,9 @@ extends Node2D
 const P1_ACTIONS: Array[String] = ["p1_left", "p1_right", "p1_jump", "p1_attack", "p1_vapor", "p1_puddle"]
 const P2_ACTIONS: Array[String] = ["p2_left", "p2_right", "p2_jump", "p2_attack", "p2_vapor", "p2_puddle"]
 const CHARACTER_NAMES: Array[String] = ["Azure", "Crimson", "Emerald", "Gold"]
+const WINS_TO_TAKE_MATCH := 2
+const ROUND_RESULT_MIN_DISPLAY := 2.0
+const MATCH_RESULT_MIN_DISPLAY := 2.5
 const CHARACTER_COLORS: Array[Color] = [
 	Color(0.15, 0.45, 0.95, 1.0),
 	Color(0.9, 0.2, 0.15, 1.0),
@@ -17,6 +20,12 @@ var p1_character_index := 0
 var p2_character_index := 1
 var p1_locked := false
 var p2_locked := false
+var p1_round_wins := 0
+var p2_round_wins := 0
+var current_round := 1
+var is_round_result_active := false
+var is_match_over := false
+var round_result_input_delay := 0.0
 
 @onready var player_1: Node = $Player1
 @onready var player_2: Node = $Player2
@@ -31,16 +40,35 @@ var p2_locked := false
 @onready var p1_controls: Label = $CharacterSelect/MenuPanel/P1Controls
 @onready var p2_controls: Label = $CharacterSelect/MenuPanel/P2Controls
 @onready var menu_hint: Label = $CharacterSelect/MenuPanel/Hint
+@onready var end_screen: CanvasLayer = $EndScreen
+@onready var end_backdrop: ColorRect = $EndScreen/Backdrop
+@onready var end_title: Label = $EndScreen/Panel/Title
+@onready var end_subtitle: Label = $EndScreen/Panel/SubTitle
+@onready var winner_tag: Label = $EndScreen/Panel/WinnerTag
+@onready var loser_tag: Label = $EndScreen/Panel/LoserTag
+@onready var winner_face: TextureRect = $EndScreen/Panel/WinnerFace
+@onready var loser_face: TextureRect = $EndScreen/Panel/LoserFace
+@onready var end_score: Label = $EndScreen/Panel/Score
+@onready var end_hint: Label = $EndScreen/Panel/Hint
 
 
 func _ready() -> void:
+	if player_1.has_signal("died"):
+		player_1.connect("died", Callable(self, "_on_player_1_died"))
+	if player_2.has_signal("died"):
+		player_2.connect("died", Callable(self, "_on_player_2_died"))
+	end_screen.visible = false
 	_initialize_character_select()
 	_ensure_remote_fallback_bindings()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	_refresh_joypad_mapping()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if is_round_result_active:
+		round_result_input_delay = max(round_result_input_delay - delta, 0.0)
+		_handle_round_result_input()
+		return
 	if not is_character_select_active:
 		return
 	_handle_character_select_input()
@@ -108,9 +136,118 @@ func _start_match_with_selection() -> void:
 	_apply_character_to_player(player_1, p1_character_index)
 	_apply_character_to_player(player_2, p2_character_index)
 	character_select.visible = false
+	_start_best_of_three()
+
+
+func _start_best_of_three() -> void:
+	p1_round_wins = 0
+	p2_round_wins = 0
+	current_round = 1
+	is_match_over = false
+	is_round_result_active = false
+	end_screen.visible = false
 	hud.visible = true
 	is_character_select_active = false
+	_reset_players_for_round()
 	_set_gameplay_enabled(true)
+
+
+func _reset_players_for_round() -> void:
+	if player_1.has_method("reset_for_round"):
+		player_1.reset_for_round()
+	if player_2.has_method("reset_for_round"):
+		player_2.reset_for_round()
+
+
+func _on_player_1_died() -> void:
+	_handle_round_end(2)
+
+
+func _on_player_2_died() -> void:
+	_handle_round_end(1)
+
+
+func _handle_round_end(winner_player: int) -> void:
+	if is_character_select_active or is_round_result_active:
+		return
+
+	is_round_result_active = true
+	_set_gameplay_enabled(false)
+
+	if winner_player == 1:
+		p1_round_wins += 1
+	else:
+		p2_round_wins += 1
+
+	var winner_name := "P1" if winner_player == 1 else "P2"
+	var winner_color := Color(0.2, 0.5, 1.0, 0.88) if winner_player == 1 else Color(1.0, 0.2, 0.2, 0.88)
+
+	if p1_round_wins >= WINS_TO_TAKE_MATCH or p2_round_wins >= WINS_TO_TAKE_MATCH:
+		is_match_over = true
+		round_result_input_delay = MATCH_RESULT_MIN_DISPLAY
+		_show_end_screen("DEATH SCREEN", "%s WINS THE MATCH" % winner_name, winner_color, "Match Score %d - %d" % [p1_round_wins, p2_round_wins], "Press Attack or Jump to start a rematch (best of 3)")
+		_update_end_screen_faces(winner_player)
+	else:
+		is_match_over = false
+		round_result_input_delay = ROUND_RESULT_MIN_DISPLAY
+		_show_end_screen("DEATH SCREEN", "%s WINS ROUND %d" % [winner_name, current_round], winner_color, "Match Score %d - %d" % [p1_round_wins, p2_round_wins], "Press Attack or Jump for next round")
+		_update_end_screen_faces(winner_player)
+
+
+func _show_end_screen(title: String, subtitle: String, tint: Color, score_text: String, hint_text: String) -> void:
+	end_screen.visible = true
+	end_title.text = title
+	end_subtitle.text = subtitle
+	end_score.text = score_text
+	end_hint.text = hint_text
+	end_backdrop.color = tint
+
+
+func _update_end_screen_faces(winner_player: int) -> void:
+	var winner_node: Node = player_1 if winner_player == 1 else player_2
+	var loser_node: Node = player_2 if winner_player == 1 else player_1
+
+	winner_tag.text = "WINNER P%d" % winner_player
+	loser_tag.text = "LOSER P%d" % (2 if winner_player == 1 else 1)
+
+	winner_face.texture = _get_player_expression_texture(winner_node, "face")
+	loser_face.texture = _get_player_expression_texture(loser_node, "dolor")
+
+	if loser_face.texture == null:
+		loser_face.texture = _get_player_expression_texture(loser_node, "face")
+
+	winner_face.visible = winner_face.texture != null
+	loser_face.visible = loser_face.texture != null
+
+
+func _get_player_expression_texture(player_node: Node, expression: String) -> Texture2D:
+	if player_node.has_method("get_expression_texture"):
+		return player_node.get_expression_texture(expression)
+	return null
+
+
+func _handle_round_result_input() -> void:
+	if round_result_input_delay > 0.0:
+		return
+	if not _confirm_pressed_any_player():
+		return
+
+	if is_match_over:
+		_start_best_of_three()
+		return
+
+	current_round += 1
+	is_round_result_active = false
+	end_screen.visible = false
+	_reset_players_for_round()
+	_set_gameplay_enabled(true)
+
+
+func _confirm_pressed_any_player() -> bool:
+	return Input.is_action_just_pressed("p1_attack") \
+		or Input.is_action_just_pressed("p1_jump") \
+		or Input.is_action_just_pressed("p2_attack") \
+		or Input.is_action_just_pressed("p2_jump")
 
 
 func _apply_character_to_player(player_node: Node, character_index: int) -> void:

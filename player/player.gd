@@ -74,6 +74,12 @@ func apply_character_color(new_color: Color) -> void:
 	if body != null:
 		body.color = body_color
 
+
+func reset_for_round() -> void:
+	hits_taken = 0
+	hit_changed.emit(hits_taken)
+	_reset_to_spawn()
+
 func _physics_process(delta: float) -> void:
 	cooldown_timer = max(cooldown_timer - delta, 0.0)
 	invincible_timer = max(invincible_timer - delta, 0.0)
@@ -353,6 +359,10 @@ func _update_avatar_texture(state: String) -> void:
 	if tex != null:
 		avatar.texture = tex
 
+
+func get_expression_texture(state: String) -> Texture2D:
+	return visual_textures.get(state, visual_textures.get("face", null))
+
 func _update_visual_state() -> void:
 	if form == Form.PUDDLE:
 		return
@@ -365,5 +375,5 @@ func _update_visual_state() -> void:
 	else:
 		_update_avatar_texture("face")
 
-func _normalize_asset_name(name: String) -> String:
-	return name.to_lower().replace("-", "_")
+func _normalize_asset_name(asset_name: String) -> String:
+	return asset_name.to_lower().replace("-", "_")
