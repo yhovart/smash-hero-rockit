@@ -15,6 +15,7 @@ var _active_count := 2
 func _ready() -> void:
 	for i in 4:
 		set_player_stocks(i, MAX_HEARTS)
+	legend_bg.visible = false
 	configure_for_players(2)
 
 
