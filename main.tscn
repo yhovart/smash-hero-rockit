@@ -40,6 +40,30 @@ action_vapor = "p2_vapor"
 action_puddle = "p2_puddle"
 body_color = Color(0.9, 0.2, 0.15, 1.0)
 
+[node name="Player3" parent="." groups=["player"] instance=ExtResource("1_player")]
+position = Vector2(576, 500)
+spawn_position = Vector2(576, 500)
+asset_prefix = "Joel"
+action_left = "p3_left"
+action_right = "p3_right"
+action_jump = "p3_jump"
+action_attack = "p3_attack"
+action_vapor = "p3_vapor"
+action_puddle = "p3_puddle"
+body_color = Color(0.2, 0.8, 0.35, 1.0)
+
+[node name="Player4" parent="." groups=["player"] instance=ExtResource("1_player")]
+position = Vector2(1000, 500)
+spawn_position = Vector2(1000, 500)
+asset_prefix = "Maite"
+action_left = "p4_left"
+action_right = "p4_right"
+action_jump = "p4_jump"
+action_attack = "p4_attack"
+action_vapor = "p4_vapor"
+action_puddle = "p4_puddle"
+body_color = Color(0.95, 0.75, 0.2, 1.0)
+
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("2_hud")
 
@@ -352,6 +376,32 @@ offset_right = 1136.0
 offset_bottom = 70.0
 alignment = 2
 
+[node name="P3Shields" type="HBoxContainer" parent="HUD"]
+offset_left = 350.0
+offset_top = 12.0
+offset_right = 474.0
+offset_bottom = 42.0
+
+[node name="P3Stocks" type="HBoxContainer" parent="HUD"]
+offset_left = 350.0
+offset_top = 46.0
+offset_right = 474.0
+offset_bottom = 70.0
+
+[node name="P4Shields" type="HBoxContainer" parent="HUD"]
+offset_left = 680.0
+offset_top = 12.0
+offset_right = 804.0
+offset_bottom = 42.0
+alignment = 2
+
+[node name="P4Stocks" type="HBoxContainer" parent="HUD"]
+offset_left = 680.0
+offset_top = 46.0
+offset_right = 804.0
+offset_bottom = 70.0
+alignment = 2
+
 [node name="LegendBG" type="ColorRect" parent="HUD"]
 offset_left = 280.0
 offset_top = 568.0
@@ -475,3 +525,7 @@ one_way_collision = true
 [connection signal="hit_changed" from="Player2" to="HUD" method="set_p2_hits"]
 [connection signal="stock_changed" from="Player1" to="HUD" method="set_p1_stocks"]
 [connection signal="stock_changed" from="Player2" to="HUD" method="set_p2_stocks"]
+[connection signal="hit_changed" from="Player3" to="HUD" method="set_p3_hits"]
+[connection signal="hit_changed" from="Player4" to="HUD" method="set_p4_hits"]
+[connection signal="stock_changed" from="Player3" to="HUD" method="set_p3_stocks"]
+[connection signal="stock_changed" from="Player4" to="HUD" method="set_p4_stocks"]

@@ -4,47 +4,113 @@ const MAX_HITS = 3
 const HIT_ICON_SIZE = 28.0
 const TROPHY_ICON_SIZE = 22.0
 
-var p1_hits := 0
-var p2_hits := 0
-var p1_face_texture: Texture2D = null
-var p2_face_texture: Texture2D = null
+var hits := [0, 0, 0, 0]
+var face_textures: Array = [null, null, null, null]
+var _active_count := 2
 
-@onready var p1_hits_container: HBoxContainer = $P1Shields
-@onready var p2_hits_container: HBoxContainer = $P2Shields
-@onready var p1_stocks_container: HBoxContainer = $P1Stocks
-@onready var p2_stocks_container: HBoxContainer = $P2Stocks
+@onready var hit_containers: Array[HBoxContainer] = [$P1Shields, $P2Shields, $P3Shields, $P4Shields]
+@onready var stock_containers: Array[HBoxContainer] = [$P1Stocks, $P2Stocks, $P3Stocks, $P4Stocks]
+@onready var legend_bg: ColorRect = $LegendBG
+
 
 func _ready() -> void:
-	_rebuild_hit_icons(p1_hits_container, MAX_HITS, p1_face_texture)
-	_rebuild_hit_icons(p2_hits_container, MAX_HITS, p2_face_texture)
+	for i in 4:
+		_rebuild_hit_icons(hit_containers[i], MAX_HITS, face_textures[i])
+	configure_for_players(2)
 
-func set_p1_face(texture: Texture2D) -> void:
-	p1_face_texture = texture
-	if is_inside_tree() and p1_hits_container != null:
-		_rebuild_hit_icons(p1_hits_container, MAX_HITS - p1_hits, p1_face_texture)
 
-func set_p2_face(texture: Texture2D) -> void:
-	p2_face_texture = texture
-	if is_inside_tree() and p2_hits_container != null:
-		_rebuild_hit_icons(p2_hits_container, MAX_HITS - p2_hits, p2_face_texture)
+func configure_for_players(count: int) -> void:
+	_active_count = count
+	for i in 4:
+		hit_containers[i].visible = i < count
+		stock_containers[i].visible = i < count
 
-func set_p1_hits(hits: int) -> void:
-	p1_hits = hits
-	if is_inside_tree() and p1_hits_container != null:
-		_rebuild_hit_icons(p1_hits_container, MAX_HITS - hits, p1_face_texture)
+	# Reposition HUD containers based on player count
+	match count:
+		2:
+			_position_container(hit_containers[0], 16, 12, 140, 42)
+			_position_container(stock_containers[0], 16, 46, 140, 70)
+			_position_container(hit_containers[1], 1012, 12, 1136, 42)
+			_position_container(stock_containers[1], 1012, 46, 1136, 70)
+			hit_containers[1].alignment = BoxContainer.ALIGNMENT_END
+			stock_containers[1].alignment = BoxContainer.ALIGNMENT_END
+		3:
+			_position_container(hit_containers[0], 16, 12, 140, 42)
+			_position_container(stock_containers[0], 16, 46, 140, 70)
+			_position_container(hit_containers[1], 500, 12, 652, 42)
+			_position_container(stock_containers[1], 500, 46, 652, 70)
+			_position_container(hit_containers[2], 1012, 12, 1136, 42)
+			_position_container(stock_containers[2], 1012, 46, 1136, 70)
+			hit_containers[1].alignment = BoxContainer.ALIGNMENT_CENTER
+			stock_containers[1].alignment = BoxContainer.ALIGNMENT_CENTER
+			hit_containers[2].alignment = BoxContainer.ALIGNMENT_END
+			stock_containers[2].alignment = BoxContainer.ALIGNMENT_END
+		4:
+			_position_container(hit_containers[0], 16, 12, 140, 42)
+			_position_container(stock_containers[0], 16, 46, 140, 70)
+			_position_container(hit_containers[1], 350, 12, 490, 42)
+			_position_container(stock_containers[1], 350, 46, 490, 70)
+			_position_container(hit_containers[2], 664, 12, 804, 42)
+			_position_container(stock_containers[2], 664, 46, 804, 70)
+			_position_container(hit_containers[3], 1012, 12, 1136, 42)
+			_position_container(stock_containers[3], 1012, 46, 1136, 70)
+			hit_containers[1].alignment = BoxContainer.ALIGNMENT_CENTER
+			stock_containers[1].alignment = BoxContainer.ALIGNMENT_CENTER
+			hit_containers[2].alignment = BoxContainer.ALIGNMENT_CENTER
+			stock_containers[2].alignment = BoxContainer.ALIGNMENT_CENTER
+			hit_containers[3].alignment = BoxContainer.ALIGNMENT_END
+			stock_containers[3].alignment = BoxContainer.ALIGNMENT_END
 
-func set_p2_hits(hits: int) -> void:
-	p2_hits = hits
-	if is_inside_tree() and p2_hits_container != null:
-		_rebuild_hit_icons(p2_hits_container, MAX_HITS - hits, p2_face_texture)
 
-func set_p1_stocks(stocks: int) -> void:
-	if is_inside_tree() and p1_stocks_container != null:
-		_rebuild_trophy_icons(p1_stocks_container, stocks)
+func _position_container(c: Control, left: float, top: float, right: float, bottom: float) -> void:
+	c.offset_left = left
+	c.offset_top = top
+	c.offset_right = right
+	c.offset_bottom = bottom
 
-func set_p2_stocks(stocks: int) -> void:
-	if is_inside_tree() and p2_stocks_container != null:
-		_rebuild_trophy_icons(p2_stocks_container, stocks)
+
+# ─── Generic methods ───────────────────────────────────────────────────────────
+
+func set_player_hits(player_index: int, hit_count: int) -> void:
+	if player_index < 0 or player_index >= 4:
+		return
+	hits[player_index] = hit_count
+	if is_inside_tree() and hit_containers[player_index] != null:
+		_rebuild_hit_icons(hit_containers[player_index], MAX_HITS - hit_count, face_textures[player_index])
+
+
+func set_player_stocks(player_index: int, stocks: int) -> void:
+	if player_index < 0 or player_index >= 4:
+		return
+	if is_inside_tree() and stock_containers[player_index] != null:
+		_rebuild_trophy_icons(stock_containers[player_index], stocks)
+
+
+func set_player_face(player_index: int, texture: Texture2D) -> void:
+	if player_index < 0 or player_index >= 4:
+		return
+	face_textures[player_index] = texture
+	if is_inside_tree() and hit_containers[player_index] != null:
+		_rebuild_hit_icons(hit_containers[player_index], MAX_HITS - hits[player_index], texture)
+
+
+# ─── Backward-compatible signal methods (used by scene connections) ────────────
+
+func set_p1_hits(h: int) -> void: set_player_hits(0, h)
+func set_p2_hits(h: int) -> void: set_player_hits(1, h)
+func set_p3_hits(h: int) -> void: set_player_hits(2, h)
+func set_p4_hits(h: int) -> void: set_player_hits(3, h)
+func set_p1_stocks(s: int) -> void: set_player_stocks(0, s)
+func set_p2_stocks(s: int) -> void: set_player_stocks(1, s)
+func set_p3_stocks(s: int) -> void: set_player_stocks(2, s)
+func set_p4_stocks(s: int) -> void: set_player_stocks(3, s)
+func set_p1_face(t: Texture2D) -> void: set_player_face(0, t)
+func set_p2_face(t: Texture2D) -> void: set_player_face(1, t)
+func set_p3_face(t: Texture2D) -> void: set_player_face(2, t)
+func set_p4_face(t: Texture2D) -> void: set_player_face(3, t)
+
+
+# ─── Icon builders ─────────────────────────────────────────────────────────────
 
 func _rebuild_hit_icons(container: HBoxContainer, remaining: int, face_tex: Texture2D) -> void:
 	for child in container.get_children():
@@ -59,6 +125,7 @@ func _rebuild_hit_icons(container: HBoxContainer, remaining: int, face_tex: Text
 		if i >= remaining:
 			icon.modulate = Color(0.25, 0.25, 0.25, 0.4)
 		container.add_child(icon)
+
 
 func _rebuild_trophy_icons(container: HBoxContainer, count: int) -> void:
 	for child in container.get_children():
