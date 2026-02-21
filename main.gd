@@ -927,6 +927,9 @@ func _get_player_expression_texture(player_node: Node, expression: String) -> Te
 func _handle_result_input() -> void:
 	if result_input_delay > 0.0:
 		return
+	if Input.is_action_just_pressed("ui_cancel"):
+		_return_to_main_menu()
+		return
 
 	# Vapor: return to main menu
 	for i in num_players:
