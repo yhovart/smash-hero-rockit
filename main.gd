@@ -6,6 +6,11 @@ const CHARACTER_NAMES: Array[String] = ["Franck", "Yves-Henri", "Joel", "Maite"]
 const CHARACTER_ASSET_PREFIXES: Array[String] = ["franck", "Yves-Henri", "Joel", "Maite"]
 const ARENA_NAMES: Array[String] = ["Classic", "Sky Bridge", "Pitfall"]
 const RESULT_MIN_DISPLAY := 2.0
+const PLAYER_MAX_STOCKS := 3
+const SFX_CHEVRE_PATH := "res://assets/sounds/chevre.mp3"
+const SFX_WILHELM_PATH := "res://assets/sounds/wilhelm.mp3"
+const SFX_FINISH_HIM_PATH := "res://assets/sounds/finish-him.mp3"
+const SFX_VICTORY_PATH := "res://assets/sounds/victoryff.swf.mp3"
 const CHARACTER_COLORS: Array[Color] = [
 	Color(0.15, 0.45, 0.95, 1.0),
 	Color(0.9, 0.2, 0.15, 1.0),
@@ -26,6 +31,12 @@ var is_result_active := false
 var result_input_delay := 0.0
 var selected_arena_index := 0
 var menu_asset_lookup: Dictionary = {}
+var p1_previous_stocks := PLAYER_MAX_STOCKS
+var p2_previous_stocks := PLAYER_MAX_STOCKS
+var chevre_player: AudioStreamPlayer
+var wilhelm_player: AudioStreamPlayer
+var finish_him_player: AudioStreamPlayer
+var victory_player: AudioStreamPlayer
 
 @onready var player_1: Node = $Player1
 @onready var player_2: Node = $Player2
@@ -79,6 +90,19 @@ func _ready() -> void:
 		player_1.connect("eliminated", Callable(self, "_on_player_1_died"))
 	if player_2.has_signal("eliminated"):
 		player_2.connect("eliminated", Callable(self, "_on_player_2_died"))
+	if player_1.has_signal("stock_changed"):
+		player_1.connect("stock_changed", Callable(self, "_on_player_1_stock_changed"))
+	if player_2.has_signal("stock_changed"):
+		player_2.connect("stock_changed", Callable(self, "_on_player_2_stock_changed"))
+	if player_1.has_signal("got_hit"):
+		player_1.connect("got_hit", Callable(self, "_on_player_got_hit"))
+	if player_2.has_signal("got_hit"):
+		player_2.connect("got_hit", Callable(self, "_on_player_got_hit"))
+	if player_1.has_signal("fell_out"):
+		player_1.connect("fell_out", Callable(self, "_on_player_fell_out"))
+	if player_2.has_signal("fell_out"):
+		player_2.connect("fell_out", Callable(self, "_on_player_fell_out"))
+	_setup_audio_players()
 	_build_menu_asset_lookup()
 	end_screen.visible = false
 	_initialize_character_select()
@@ -217,6 +241,8 @@ func _start_game() -> void:
 	end_screen.visible = false
 	hud.visible = true
 	is_character_select_active = false
+	p1_previous_stocks = PLAYER_MAX_STOCKS
+	p2_previous_stocks = PLAYER_MAX_STOCKS
 	_reset_players_for_round()
 	_set_gameplay_enabled(true)
 
@@ -249,6 +275,75 @@ func _handle_game_end(winner_player: int) -> void:
 
 	_show_end_screen("K.O.", "%s WINS!" % winner_name, winner_color, "", "Attack/Jump: Rematch   Vapor: Main Menu")
 	_update_end_screen_faces(winner_player)
+	_play_sound(victory_player)
+
+
+func _setup_audio_players() -> void:
+	chevre_player = _create_sfx_player(_load_mp3_stream(SFX_CHEVRE_PATH))
+	wilhelm_player = _create_sfx_player(_load_mp3_stream(SFX_WILHELM_PATH))
+	finish_him_player = _create_sfx_player(_load_mp3_stream(SFX_FINISH_HIM_PATH))
+	victory_player = _create_sfx_player(_load_mp3_stream(SFX_VICTORY_PATH))
+
+
+func _create_sfx_player(stream: AudioStream) -> AudioStreamPlayer:
+	var player := AudioStreamPlayer.new()
+	player.stream = stream
+	add_child(player)
+	return player
+
+
+func _load_mp3_stream(path: String) -> AudioStream:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return null
+	var stream := AudioStreamMP3.new()
+	stream.data = file.get_buffer(file.get_length())
+	return stream
+
+
+func _play_sound(player: AudioStreamPlayer) -> void:
+	if player == null or player.stream == null:
+		return
+	player.play()
+
+
+func _on_player_1_stock_changed(stocks: int) -> void:
+	_handle_stock_audio(stocks, p1_previous_stocks)
+	p1_previous_stocks = stocks
+
+
+func _on_player_2_stock_changed(stocks: int) -> void:
+	_handle_stock_audio(stocks, p2_previous_stocks)
+	p2_previous_stocks = stocks
+
+
+func _handle_stock_audio(stocks: int, previous_stocks: int) -> void:
+	if is_character_select_active:
+		return
+	if stocks >= previous_stocks:
+		return
+	if stocks == 1:
+		_play_sound(finish_him_player)
+
+
+func _on_player_got_hit(next_stocks: int, caused_stock_loss: bool) -> void:
+	if is_character_select_active:
+		return
+	if next_stocks <= 0:
+		return
+	if caused_stock_loss and next_stocks == 1:
+		return
+	_play_sound(wilhelm_player)
+
+
+func _on_player_fell_out(next_stocks: int) -> void:
+	if is_character_select_active:
+		return
+	if next_stocks <= 0:
+		return
+	if next_stocks == 1:
+		return
+	_play_sound(chevre_player)
 
 
 func _show_end_screen(title: String, subtitle: String, tint: Color, score_text: String, hint_text: String) -> void:

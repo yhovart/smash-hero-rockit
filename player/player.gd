@@ -66,6 +66,8 @@ signal hit_changed(hits: int)
 signal died
 signal stock_changed(stocks: int)
 signal eliminated
+signal fell_out(next_stocks: int)
+signal got_hit(next_stocks: int, caused_stock_loss: bool)
 
 var stocks := MAX_STOCKS
 
@@ -154,6 +156,7 @@ func _physics_process(delta: float) -> void:
 		_fall_death()
 
 func _fall_death() -> void:
+	fell_out.emit(stocks - 1)
 	_lose_stock()
 
 func _lose_stock() -> void:
@@ -393,6 +396,9 @@ func take_hit(_damage: int, knockback_dir: float) -> void:
 	if invincible_timer > 0.0 or form == Form.VAPOR:
 		return
 	hits_taken += 1
+	var will_lose_stock := hits_taken >= MAX_HITS
+	var next_stocks := stocks - 1 if will_lose_stock else stocks
+	got_hit.emit(next_stocks, will_lose_stock)
 	invincible_timer = HIT_INVINCIBILITY
 	velocity.x = knockback_dir * ATTACK_KNOCKBACK
 	velocity.y = -200.0
