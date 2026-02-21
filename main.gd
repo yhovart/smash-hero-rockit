@@ -427,6 +427,10 @@ func _reset_char_select() -> void:
 	# Default: each player gets a different character
 	for i in 4:
 		char_indices[i] = i % CHARACTER_NAMES.size()
+	# Ensure no two unlocked players start on a locked character
+	for i in num_players:
+		if _is_char_locked_by_other(i, char_indices[i]):
+			char_indices[i] = _next_available_char(i, char_indices[i], 1)
 
 
 func _layout_char_columns() -> void:
@@ -493,6 +497,23 @@ func _update_char_ui() -> void:
 	_char_hint.text = "Left/Right: Pick • Attack/Jump: Lock • Jump: Unlock • Vapor: Back • Esc: Quit"
 
 
+func _is_char_locked_by_other(player_idx: int, char_idx: int) -> bool:
+	for j in num_players:
+		if j != player_idx and char_locked[j] and char_indices[j] == char_idx:
+			return true
+	return false
+
+
+func _next_available_char(player_idx: int, current: int, direction: int) -> int:
+	var total := CHARACTER_NAMES.size()
+	for _step in total:
+		current = wrapi(current + direction, 0, total)
+		if not _is_char_locked_by_other(player_idx, current):
+			return current
+	# Fallback (all taken – shouldn't happen with 4 chars / max 4 players)
+	return current
+
+
 func _handle_char_input() -> void:
 	if Input.is_action_just_pressed("ui_cancel"):
 		get_tree().quit()
@@ -511,14 +532,15 @@ func _handle_char_input() -> void:
 		var acts: Array = PLAYER_ACTION_SETS[i]
 		if not char_locked[i]:
 			if Input.is_action_just_pressed(acts[0]):  # left
-				char_indices[i] = wrapi(char_indices[i] - 1, 0, CHARACTER_NAMES.size())
+				char_indices[i] = _next_available_char(i, char_indices[i], -1)
 				changed = true
 			elif Input.is_action_just_pressed(acts[1]):  # right
-				char_indices[i] = wrapi(char_indices[i] + 1, 0, CHARACTER_NAMES.size())
+				char_indices[i] = _next_available_char(i, char_indices[i], 1)
 				changed = true
 			if Input.is_action_just_pressed(acts[3]) or Input.is_action_just_pressed(acts[2]):  # attack or jump
-				char_locked[i] = true
-				changed = true
+				if not _is_char_locked_by_other(i, char_indices[i]):
+					char_locked[i] = true
+					changed = true
 		else:
 			# Unlock with jump
 			if Input.is_action_just_pressed(acts[2]):  # jump
