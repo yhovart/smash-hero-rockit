@@ -1,7 +1,9 @@
-[gd_scene load_steps=6 format=3 uid="uid://bmain001"]
+[gd_scene load_steps=8 format=3 uid="uid://bmain001"]
 
 [ext_resource type="PackedScene" uid="uid://bplayer001" path="res://player/player.tscn" id="1_player"]
 [ext_resource type="Script" path="res://hud.gd" id="2_hud"]
+[ext_resource type="PackedScene" uid="uid://bhazard001" path="res://hazards/falling_hazard.tscn" id="3_hazard"]
+[ext_resource type="Script" path="res://hazards/hazard_spawner.gd" id="4_spawner"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(800, 32)
@@ -47,6 +49,15 @@ offset_bottom = 60.0
 text = "P1"
 horizontal_alignment = 0
 
+[node name="P1Deaths" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 62.0
+offset_right = 120.0
+offset_bottom = 78.0
+text = "Deaths: 0"
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.5, 0.7, 1.0, 1.0)
+
 [node name="P2Shields" type="HBoxContainer" parent="HUD"]
 offset_left = 1032.0
 offset_top = 12.0
@@ -61,35 +72,49 @@ offset_bottom = 60.0
 text = "P2"
 horizontal_alignment = 2
 
+[node name="P2Deaths" type="Label" parent="HUD"]
+offset_left = 1032.0
+offset_top = 62.0
+offset_right = 1136.0
+offset_bottom = 78.0
+text = "Deaths: 0"
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(1.0, 0.5, 0.45, 1.0)
+horizontal_alignment = 2
+
 [node name="LegendBG" type="ColorRect" parent="HUD"]
-offset_left = 310.0
-offset_top = 580.0
-offset_right = 842.0
+offset_left = 280.0
+offset_top = 568.0
+offset_right = 872.0
 offset_bottom = 648.0
 color = Color(0.0, 0.0, 0.0, 0.5)
 
 [node name="P1Legend" type="Label" parent="HUD/LegendBG"]
 offset_left = 10.0
 offset_top = 4.0
-offset_right = 260.0
-offset_bottom = 64.0
+offset_right = 286.0
+offset_bottom = 76.0
 text = "P1 (Blue)
-Move: A / D    Jump: W
-Attack: E    Vapor: Shift    Puddle: S"
+Move: A / D    Jump: W    Attack: E
+Hold E: Projectile    Vapor: Shift    Puddle: F"
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.5, 0.7, 1.0, 1.0)
 
 [node name="P2Legend" type="Label" parent="HUD/LegendBG"]
-offset_left = 272.0
+offset_left = 296.0
 offset_top = 4.0
-offset_right = 522.0
-offset_bottom = 64.0
+offset_right = 582.0
+offset_bottom = 76.0
 text = "P2 (Red)
-Move: ← / →    Jump: ↑
-Attack: Num0    Vapor: Ctrl    Puddle: ↓"
+Move: ← / →    Jump: ↑    Attack: Num0
+Hold Num0: Projectile    Vapor: NumEnter    Puddle: RShift"
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(1.0, 0.5, 0.45, 1.0)
 horizontal_alignment = 2
+
+[node name="HazardSpawner" type="Node2D" parent="."]
+script = ExtResource("4_spawner")
+hazard_scene = ExtResource("3_hazard")
 
 [node name="Floor" type="StaticBody2D" parent="."]
 position = Vector2(576, 600)
@@ -145,3 +170,5 @@ shape = SubResource("RectangleShape2D_plat1")
 
 [connection signal="hit_changed" from="Player1" to="HUD" method="set_p1_hits"]
 [connection signal="hit_changed" from="Player2" to="HUD" method="set_p2_hits"]
+[connection signal="died" from="Player1" to="HUD" method="add_p1_death"]
+[connection signal="died" from="Player2" to="HUD" method="add_p2_death"]

@@ -2,19 +2,22 @@ extends CanvasLayer
 
 const MAX_HITS = 3
 const SHIELD_SIZE = 20.0
-const SHIELD_SPACING = 28.0
-const MARGIN = 16.0
 
 var p1_hits := 0
 var p2_hits := 0
+var p1_deaths := 0
+var p2_deaths := 0
 
 @onready var p1_container: Control = $P1Shields
 @onready var p2_container: Control = $P2Shields
+@onready var p1_death_label: Label = $P1Deaths
+@onready var p2_death_label: Label = $P2Deaths
 
 func _ready() -> void:
 	_build_shields(p1_container, MAX_HITS)
 	_build_shields(p2_container, MAX_HITS)
 	_update_shields()
+	_update_death_labels()
 
 func set_p1_hits(hits: int) -> void:
 	p1_hits = hits
@@ -25,6 +28,16 @@ func set_p2_hits(hits: int) -> void:
 	p2_hits = hits
 	if is_inside_tree() and p2_container != null:
 		_update_shields()
+
+func add_p1_death() -> void:
+	p1_deaths += 1
+	if is_inside_tree() and p1_death_label != null:
+		_update_death_labels()
+
+func add_p2_death() -> void:
+	p2_deaths += 1
+	if is_inside_tree() and p2_death_label != null:
+		_update_death_labels()
 
 func _build_shields(container: Control, count: int) -> void:
 	for i in count:
@@ -44,6 +57,10 @@ func _update_shields() -> void:
 		shield.alive = i >= p2_hits
 		shield.shield_color = Color(0.9, 0.2, 0.15, 1.0)
 		shield.queue_redraw()
+
+func _update_death_labels() -> void:
+	p1_death_label.text = "Deaths: " + str(p1_deaths)
+	p2_death_label.text = "Deaths: " + str(p2_deaths)
 
 
 class ShieldIcon extends Control:

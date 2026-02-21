@@ -1,0 +1,40 @@
+[gd_scene load_steps=3 format=3 uid="uid://bhazard001"]
+
+[ext_resource type="Script" path="res://hazards/falling_hazard.gd" id="1_script"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1"]
+radius = 14.0
+
+[node name="FallingHazard" type="Area2D"]
+collision_layer = 8
+collision_mask = 1
+script = ExtResource("1_script")
+
+[node name="Visual" type="Polygon2D" parent="."]
+color = Color(0.5, 0.4, 0.3, 1.0)
+polygon = PackedVector2Array(0, -16, 12, -10, 16, 0, 12, 12, 4, 16, -8, 14, -16, 6, -14, -8, -6, -14)
+
+[node name="Glow" type="Polygon2D" parent="."]
+visible = false
+color = Color(1.0, 0.8, 0.2, 0.3)
+polygon = PackedVector2Array(0, -24, 14, -14, 20, 0, 14, 14, 0, 20, -14, 14, -20, 0, -14, -14)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_1")
+
+[node name="Particles" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 16
+lifetime = 0.5
+one_shot = true
+explosiveness = 0.9
+direction = Vector2(0, -1)
+spread = 120.0
+gravity = Vector2(0, 100)
+initial_velocity_min = 40.0
+initial_velocity_max = 80.0
+scale_amount_min = 2.0
+scale_amount_max = 4.0
+color = Color(0.6, 0.5, 0.4, 0.7)
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

@@ -22,6 +22,8 @@ const HIT_INVINCIBILITY = 0.5
 @export var action_puddle := "p1_puddle"
 @export var body_color := Color(0.15, 0.45, 0.95, 1.0)
 
+var projectile_scene: PackedScene = preload("res://player/water_projectile.tscn")
+
 var form: Form = Form.WATER
 var form_timer := 0.0
 var cooldown_timer := 0.0
@@ -30,6 +32,13 @@ var invincible_timer := 0.0
 var is_attacking := false
 var attack_timer := 0.0
 var facing := 1.0
+var charge_time := 0.0
+var is_charging := false
+const CHARGE_THRESHOLD = 0.4
+const PROJECTILE_COOLDOWN = 0.8
+var projectile_cooldown_timer := 0.0
+var puddle_buffer := 0.0
+const PUDDLE_BUFFER_TIME = 0.2
 
 signal hit_changed(hits: int)
 signal died
@@ -49,6 +58,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	cooldown_timer = max(cooldown_timer - delta, 0.0)
 	invincible_timer = max(invincible_timer - delta, 0.0)
+	projectile_cooldown_timer = max(projectile_cooldown_timer - delta, 0.0)
 
 	if invincible_timer > 0.0:
 		body.modulate.a = 0.5 if fmod(invincible_timer, 0.15) > 0.075 else 1.0
@@ -56,7 +66,7 @@ func _physics_process(delta: float) -> void:
 		body.modulate.a = 1.0
 
 	_handle_attack(delta)
-	_handle_form_switch()
+	_handle_form_switch(delta)
 
 	if form != Form.WATER:
 		form_timer -= delta
@@ -73,17 +83,33 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
-func _handle_form_switch() -> void:
+func _handle_form_switch(delta: float) -> void:
+	if puddle_buffer > 0.0:
+		puddle_buffer -= delta
+
+	if Input.is_action_just_pressed(action_puddle):
+		puddle_buffer = PUDDLE_BUFFER_TIME
+
+	if form == Form.VAPOR:
+		if Input.is_action_just_released(action_vapor):
+			_exit_form()
+		return
+
+	if form == Form.PUDDLE:
+		if Input.is_action_just_released(action_puddle) or not Input.is_action_pressed(action_puddle):
+			_exit_form()
+		return
+
 	if cooldown_timer > 0.0:
 		return
-	if Input.is_action_just_pressed(action_vapor) and form == Form.WATER:
+
+	if Input.is_action_just_pressed(action_vapor):
 		_enter_vapor()
-	elif Input.is_action_just_released(action_vapor) and form == Form.VAPOR:
-		_exit_form()
-	elif Input.is_action_just_pressed(action_puddle) and form == Form.WATER and is_on_floor():
+		return
+
+	if puddle_buffer > 0.0 and is_on_floor():
+		puddle_buffer = 0.0
 		_enter_puddle()
-	elif Input.is_action_just_released(action_puddle) and form == Form.PUDDLE:
-		_exit_form()
 
 func _handle_attack(delta: float) -> void:
 	if attack_timer > 0.0:
@@ -94,14 +120,45 @@ func _handle_attack(delta: float) -> void:
 			$AttackVisual.visible = false
 		return
 
+	if is_charging:
+		charge_time += delta
+		$ChargeVisual.visible = true
+		$ChargeVisual.position.x = facing * 16.0
+		var charge_ratio := clampf(charge_time / CHARGE_THRESHOLD, 0.0, 1.0)
+		$ChargeVisual.scale = Vector2.ONE * (0.5 + charge_ratio * 0.8)
+		$ChargeVisual.modulate.a = 0.4 + charge_ratio * 0.6
+
+		if Input.is_action_just_released(action_attack):
+			is_charging = false
+			$ChargeVisual.visible = false
+			if charge_time >= CHARGE_THRESHOLD and projectile_cooldown_timer <= 0.0:
+				_fire_projectile()
+			else:
+				_melee_attack()
+			charge_time = 0.0
+		return
+
 	if Input.is_action_just_pressed(action_attack) and form == Form.WATER:
-		is_attacking = true
-		attack_timer = 0.25
-		attack_hitbox.monitoring = true
-		attack_hitbox.position.x = facing * 20.0
-		$AttackVisual.visible = true
-		$AttackVisual.position.x = facing * 20.0
-		$AttackVisual.scale.x = facing
+		is_charging = true
+		charge_time = 0.0
+
+func _melee_attack() -> void:
+	is_attacking = true
+	attack_timer = 0.25
+	attack_hitbox.monitoring = true
+	attack_hitbox.position.x = facing * 20.0
+	$AttackVisual.visible = true
+	$AttackVisual.position.x = facing * 20.0
+	$AttackVisual.scale.x = facing
+
+func _fire_projectile() -> void:
+	projectile_cooldown_timer = PROJECTILE_COOLDOWN
+	var proj: Area2D = projectile_scene.instantiate()
+	proj.direction = facing
+	proj.owner_node = self
+	proj.global_position = global_position + Vector2(facing * 20.0, 0)
+	proj.modulate = body_color.lightened(0.3)
+	get_parent().add_child(proj)
 
 func _normal_physics(delta: float) -> void:
 	if not is_on_floor():

@@ -72,4 +72,10 @@ position = Vector2(20, 0)
 color = Color(0.8, 0.9, 1.0, 0.6)
 polygon = PackedVector2Array(0, -10, 9, -6, 12, 0, 9, 6, 0, 10, -4, 4, -4, -4)
 
+[node name="ChargeVisual" type="Polygon2D" parent="."]
+visible = false
+position = Vector2(16, 0)
+color = Color(0.4, 0.7, 1.0, 0.5)
+polygon = PackedVector2Array(0, -8, 6, -4, 6, 4, 0, 8, -6, 4, -6, -4)
+
 [connection signal="body_entered" from="AttackHitbox" to="." method="_on_attack_hitbox_body_entered"]
