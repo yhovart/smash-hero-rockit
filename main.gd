@@ -2,7 +2,8 @@ extends Node2D
 
 const P1_ACTIONS: Array[String] = ["p1_left", "p1_right", "p1_jump", "p1_attack", "p1_vapor", "p1_puddle"]
 const P2_ACTIONS: Array[String] = ["p2_left", "p2_right", "p2_jump", "p2_attack", "p2_vapor", "p2_puddle"]
-const CHARACTER_NAMES: Array[String] = ["Azure", "Crimson", "Emerald", "Gold"]
+const CHARACTER_NAMES: Array[String] = ["Franck", "Yves-Henri", "Joel", "Maite"]
+const CHARACTER_ASSET_PREFIXES: Array[String] = ["franck", "Yves-Henri", "Joel", "Maite"]
 const ARENA_NAMES: Array[String] = ["Classic", "Sky Bridge", "Pitfall"]
 const WINS_TO_TAKE_MATCH := 2
 const ROUND_RESULT_MIN_DISPLAY := 2.0
@@ -318,7 +319,10 @@ func _confirm_pressed_any_player() -> bool:
 
 func _apply_character_to_player(player_node: Node, character_index: int) -> void:
 	var color := CHARACTER_COLORS[character_index]
-	if player_node.has_method("apply_character_color"):
+	var asset_prefix := CHARACTER_ASSET_PREFIXES[character_index]
+	if player_node.has_method("apply_character_profile"):
+		player_node.apply_character_profile(color, asset_prefix)
+	elif player_node.has_method("apply_character_color"):
 		player_node.apply_character_color(color)
 
 

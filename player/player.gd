@@ -74,6 +74,16 @@ func apply_character_color(new_color: Color) -> void:
 	if body != null:
 		body.color = body_color
 
+func apply_character_profile(new_color: Color, new_asset_prefix: String) -> void:
+	apply_character_color(new_color)
+	asset_prefix = new_asset_prefix
+	_load_visual_textures()
+	var has_avatar := visual_textures.has("face")
+	avatar.visible = has_avatar and form != Form.PUDDLE
+	body.visible = not has_avatar and form != Form.PUDDLE
+	shine.visible = not has_avatar and form != Form.PUDDLE
+	_update_visual_state()
+
 
 func reset_for_round() -> void:
 	hits_taken = 0
@@ -336,6 +346,7 @@ func _on_attack_hitbox_body_entered(other: Node2D) -> void:
 		other.take_hit(1, dir)
 
 func _load_visual_textures() -> void:
+	visual_textures.clear()
 	var dir := DirAccess.open("res://assets")
 	if dir == null:
 		return
@@ -354,7 +365,9 @@ func _load_visual_textures() -> void:
 		var typo_key := _normalize_asset_name("%s_%s" % [asset_prefix, state_name])
 		var path: String = by_name.get(key, by_name.get(typo_key, ""))
 		if not path.is_empty():
-			visual_textures[state] = load(path)
+			var texture := _load_texture_from_path(path)
+			if texture != null:
+				visual_textures[state] = texture
 
 func _update_avatar_texture(state: String) -> void:
 	var tex: Texture2D = visual_textures.get(state, visual_textures.get("face", null))
@@ -379,3 +392,10 @@ func _update_visual_state() -> void:
 
 func _normalize_asset_name(asset_name: String) -> String:
 	return asset_name.to_lower().replace("-", "_")
+
+func _load_texture_from_path(path: String) -> Texture2D:
+	var image := Image.new()
+	var err := image.load(path)
+	if err != OK:
+		return null
+	return ImageTexture.create_from_image(image)

@@ -21,6 +21,74 @@ script = ExtResource("5_main")
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(576, 324)
 
+[node name="Sky" type="ColorRect" parent="."]
+offset_right = 1152.0
+offset_bottom = 648.0
+color = Color(0.45, 0.72, 0.9, 1)
+z_index = -50
+
+[node name="DistantMist" type="ColorRect" parent="."]
+offset_top = 360.0
+offset_right = 1152.0
+offset_bottom = 648.0
+color = Color(0.72, 0.86, 0.76, 0.45)
+z_index = -45
+
+[node name="ForestBack" type="Polygon2D" parent="."]
+color = Color(0.23, 0.44, 0.28, 1)
+polygon = PackedVector2Array(0, 460, 120, 420, 240, 455, 360, 398, 520, 450, 670, 395, 840, 448, 980, 410, 1152, 455, 1152, 648, 0, 648)
+z_index = -40
+
+[node name="ForestMid" type="Polygon2D" parent="."]
+color = Color(0.16, 0.33, 0.22, 1)
+polygon = PackedVector2Array(0, 520, 130, 478, 260, 515, 400, 466, 560, 522, 740, 468, 905, 520, 1030, 485, 1152, 530, 1152, 648, 0, 648)
+z_index = -35
+
+[node name="TreeA" type="Node2D" parent="."]
+position = Vector2(120, 470)
+z_index = -30
+
+[node name="Trunk" type="ColorRect" parent="TreeA"]
+offset_left = -16.0
+offset_top = -130.0
+offset_right = 16.0
+offset_bottom = 110.0
+color = Color(0.28, 0.19, 0.1, 1)
+
+[node name="Leaves" type="Polygon2D" parent="TreeA"]
+color = Color(0.15, 0.45, 0.22, 1)
+polygon = PackedVector2Array(0, -220, 90, -120, 65, -40, -65, -40, -90, -120)
+
+[node name="TreeB" type="Node2D" parent="."]
+position = Vector2(980, 470)
+z_index = -30
+
+[node name="Trunk" type="ColorRect" parent="TreeB"]
+offset_left = -16.0
+offset_top = -130.0
+offset_right = 16.0
+offset_bottom = 110.0
+color = Color(0.28, 0.19, 0.1, 1)
+
+[node name="Leaves" type="Polygon2D" parent="TreeB"]
+color = Color(0.14, 0.42, 0.21, 1)
+polygon = PackedVector2Array(0, -220, 90, -120, 65, -40, -65, -40, -90, -120)
+
+[node name="TreeC" type="Node2D" parent="."]
+position = Vector2(520, 420)
+z_index = -34
+
+[node name="Trunk" type="ColorRect" parent="TreeC"]
+offset_left = -12.0
+offset_top = -105.0
+offset_right = 12.0
+offset_bottom = 88.0
+color = Color(0.25, 0.17, 0.09, 1)
+
+[node name="Leaves" type="Polygon2D" parent="TreeC"]
+color = Color(0.18, 0.39, 0.21, 1)
+polygon = PackedVector2Array(0, -175, 70, -95, 50, -35, -50, -35, -70, -95)
+
 [node name="Player1" parent="." groups=["player"] instance=ExtResource("1_player")]
 position = Vector2(300, 500)
 spawn_position = Vector2(300, 500)
@@ -28,7 +96,7 @@ spawn_position = Vector2(300, 500)
 [node name="Player2" parent="." groups=["player"] instance=ExtResource("1_player")]
 position = Vector2(850, 500)
 spawn_position = Vector2(850, 500)
-asset_prefix = "PH"
+asset_prefix = "Yves-Henri"
 action_left = "p2_left"
 action_right = "p2_right"
 action_jump = "p2_jump"
@@ -346,7 +414,14 @@ offset_left = -400.0
 offset_top = -16.0
 offset_right = 400.0
 offset_bottom = 16.0
-color = Color(0.2, 0.7, 0.2, 1.0)
+color = Color(0.35, 0.23, 0.14, 1)
+
+[node name="Moss" type="ColorRect" parent="Floor"]
+offset_left = -400.0
+offset_top = -20.0
+offset_right = 400.0
+offset_bottom = -10.0
+color = Color(0.2, 0.54, 0.22, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Floor"]
 shape = SubResource("RectangleShape2D_floor")
@@ -359,7 +434,14 @@ offset_left = -100.0
 offset_top = -8.0
 offset_right = 100.0
 offset_bottom = 8.0
-color = Color(0.2, 0.7, 0.2, 1.0)
+color = Color(0.4, 0.25, 0.14, 1)
+
+[node name="Moss" type="ColorRect" parent="Platform1"]
+offset_left = -100.0
+offset_top = -12.0
+offset_right = 100.0
+offset_bottom = -4.0
+color = Color(0.2, 0.56, 0.24, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform1"]
 shape = SubResource("RectangleShape2D_plat1")
@@ -373,7 +455,14 @@ offset_left = -80.0
 offset_top = -8.0
 offset_right = 80.0
 offset_bottom = 8.0
-color = Color(0.2, 0.7, 0.2, 1.0)
+color = Color(0.4, 0.25, 0.14, 1)
+
+[node name="Moss" type="ColorRect" parent="Platform2"]
+offset_left = -80.0
+offset_top = -12.0
+offset_right = 80.0
+offset_bottom = -4.0
+color = Color(0.2, 0.56, 0.24, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform2"]
 shape = SubResource("RectangleShape2D_plat2")
@@ -387,7 +476,14 @@ offset_left = -100.0
 offset_top = -8.0
 offset_right = 100.0
 offset_bottom = 8.0
-color = Color(0.2, 0.7, 0.2, 1.0)
+color = Color(0.4, 0.25, 0.14, 1)
+
+[node name="Moss" type="ColorRect" parent="Platform3"]
+offset_left = -100.0
+offset_top = -12.0
+offset_right = 100.0
+offset_bottom = -4.0
+color = Color(0.2, 0.56, 0.24, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform3"]
 shape = SubResource("RectangleShape2D_plat1")
