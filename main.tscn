@@ -28,6 +28,7 @@ spawn_position = Vector2(300, 500)
 [node name="Player2" parent="." groups=["player"] instance=ExtResource("1_player")]
 position = Vector2(850, 500)
 spawn_position = Vector2(850, 500)
+asset_prefix = "PH"
 action_left = "p2_left"
 action_right = "p2_right"
 action_jump = "p2_jump"

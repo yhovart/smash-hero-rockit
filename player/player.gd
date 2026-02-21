@@ -22,6 +22,7 @@ const HIT_INVINCIBILITY = 0.5
 @export var action_puddle := "p1_puddle"
 @export var body_color := Color(0.15, 0.45, 0.95, 1.0)
 @export var spawn_position := Vector2(300, 500)
+@export var asset_prefix := "franck"
 
 var projectile_scene: PackedScene = preload("res://player/water_projectile.tscn")
 
@@ -42,12 +43,15 @@ var puddle_buffer := 0.0
 const PUDDLE_BUFFER_TIME = 0.2
 var drop_through_timer := 0.0
 const DROP_THROUGH_TIME = 0.25
+const VISUAL_STATES := ["face", "left", "right", "attack", "dolor"]
+var visual_textures: Dictionary = {}
 
 signal hit_changed(hits: int)
 signal died
 
 @onready var body: Polygon2D = $Body
 @onready var shine: Polygon2D = $Shine
+@onready var avatar: Sprite2D = $Avatar
 @onready var vapor_particles: CPUParticles2D = $VaporParticles
 @onready var puddle_body: Polygon2D = $PuddleBody
 @onready var puddle_hitbox: Area2D = $PuddleHitbox
@@ -56,6 +60,12 @@ signal died
 
 func _ready() -> void:
 	body.color = body_color
+	_load_visual_textures()
+	var has_avatar := visual_textures.has("face")
+	avatar.visible = has_avatar
+	body.visible = not has_avatar
+	shine.visible = not has_avatar
+	_update_avatar_texture("face")
 	hit_changed.emit.call_deferred(hits_taken)
 
 
@@ -75,9 +85,9 @@ func _physics_process(delta: float) -> void:
 			set_collision_mask_value(1, true)
 
 	if invincible_timer > 0.0:
-		body.modulate.a = 0.5 if fmod(invincible_timer, 0.15) > 0.075 else 1.0
+		avatar.modulate.a = 0.5 if fmod(invincible_timer, 0.15) > 0.075 else 1.0
 	elif form == Form.WATER:
-		body.modulate.a = 1.0
+		avatar.modulate.a = 1.0
 
 	_handle_attack(delta)
 	_handle_form_switch(delta)
@@ -94,6 +104,8 @@ func _physics_process(delta: float) -> void:
 			_vapor_physics(delta)
 		Form.PUDDLE:
 			_puddle_physics(delta)
+
+	_update_visual_state()
 
 	move_and_slide()
 
@@ -209,7 +221,6 @@ func _normal_physics(delta: float) -> void:
 	if direction:
 		velocity.x = direction * SPEED
 		facing = sign(direction)
-		body.scale.x = facing
 	else:
 		velocity.x = move_toward(velocity.x, 0, SPEED)
 
@@ -248,8 +259,8 @@ func _puddle_physics(delta: float) -> void:
 func _enter_vapor() -> void:
 	form = Form.VAPOR
 	form_timer = VAPOR_MAX_TIME
-	body.modulate = Color(0.6, 0.8, 1.0, 0.35)
-	shine.modulate = Color(1.0, 1.0, 1.0, 0.2)
+	avatar.visible = true
+	avatar.modulate = Color(1.0, 1.0, 1.0, 0.35)
 	vapor_particles.emitting = true
 	puddle_body.visible = false
 	puddle_hitbox.monitoring = false
@@ -258,8 +269,7 @@ func _enter_vapor() -> void:
 func _enter_puddle() -> void:
 	form = Form.PUDDLE
 	form_timer = PUDDLE_MAX_TIME
-	body.visible = false
-	shine.visible = false
+	avatar.visible = false
 	puddle_body.visible = true
 	puddle_hitbox.monitoring = true
 	collision_shape.position = Vector2(0, 14)
@@ -277,6 +287,8 @@ func _exit_form() -> void:
 	body.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	shine.visible = true
 	shine.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	avatar.visible = true
+	avatar.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	vapor_particles.emitting = false
 	puddle_body.visible = false
 	puddle_hitbox.monitoring = false
@@ -314,3 +326,44 @@ func _on_attack_hitbox_body_entered(other: Node2D) -> void:
 		if dir == 0.0:
 			dir = facing
 		other.take_hit(1, dir)
+
+func _load_visual_textures() -> void:
+	var dir := DirAccess.open("res://assets")
+	if dir == null:
+		return
+	var by_name: Dictionary = {}
+	for file_name in dir.get_files():
+		var ext := file_name.get_extension().to_lower()
+		if ext not in ["png", "jpg", "jpeg", "webp"]:
+			continue
+		var normalized := _normalize_asset_name(file_name.get_basename())
+		by_name[normalized] = "res://assets/%s" % file_name
+	for state in VISUAL_STATES:
+		var state_name: String = state
+		if state == "right":
+			state_name = "rigth"
+		var key := _normalize_asset_name("%s_%s" % [asset_prefix, state])
+		var typo_key := _normalize_asset_name("%s_%s" % [asset_prefix, state_name])
+		var path: String = by_name.get(key, by_name.get(typo_key, ""))
+		if not path.is_empty():
+			visual_textures[state] = load(path)
+
+func _update_avatar_texture(state: String) -> void:
+	var tex: Texture2D = visual_textures.get(state, visual_textures.get("face", null))
+	if tex != null:
+		avatar.texture = tex
+
+func _update_visual_state() -> void:
+	if form == Form.PUDDLE:
+		return
+	if invincible_timer > 0.0:
+		_update_avatar_texture("dolor")
+	elif is_attacking:
+		_update_avatar_texture("attack")
+	elif absf(velocity.x) > 5.0:
+		_update_avatar_texture("right" if facing >= 0.0 else "left")
+	else:
+		_update_avatar_texture("face")
+
+func _normalize_asset_name(name: String) -> String:
+	return name.to_lower().replace("-", "_")
