@@ -58,6 +58,12 @@ func _ready() -> void:
 	body.color = body_color
 	hit_changed.emit.call_deferred(hits_taken)
 
+
+func apply_character_color(new_color: Color) -> void:
+	body_color = new_color
+	if body != null:
+		body.color = body_color
+
 func _physics_process(delta: float) -> void:
 	cooldown_timer = max(cooldown_timer - delta, 0.0)
 	invincible_timer = max(invincible_timer - delta, 0.0)

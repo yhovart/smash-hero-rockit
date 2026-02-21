@@ -2,14 +2,124 @@ extends Node2D
 
 const P1_ACTIONS: Array[String] = ["p1_left", "p1_right", "p1_jump", "p1_attack", "p1_vapor", "p1_puddle"]
 const P2_ACTIONS: Array[String] = ["p2_left", "p2_right", "p2_jump", "p2_attack", "p2_vapor", "p2_puddle"]
+const CHARACTER_NAMES: Array[String] = ["Azure", "Crimson", "Emerald", "Gold"]
+const CHARACTER_COLORS: Array[Color] = [
+	Color(0.15, 0.45, 0.95, 1.0),
+	Color(0.9, 0.2, 0.15, 1.0),
+	Color(0.2, 0.8, 0.35, 1.0),
+	Color(0.95, 0.75, 0.2, 1.0),
+]
 
 @export var log_remote_input := true
 
+var is_character_select_active := true
+var p1_character_index := 0
+var p2_character_index := 1
+var p1_locked := false
+var p2_locked := false
+
+@onready var player_1: Node = $Player1
+@onready var player_2: Node = $Player2
+@onready var hud: CanvasLayer = $HUD
+@onready var hazard_spawner: Node = $HazardSpawner
+@onready var character_select: CanvasLayer = $CharacterSelect
+@onready var character_title: Label = $CharacterSelect/MenuPanel/Title
+@onready var p1_choice: Label = $CharacterSelect/MenuPanel/P1Choice
+@onready var p2_choice: Label = $CharacterSelect/MenuPanel/P2Choice
+@onready var menu_hint: Label = $CharacterSelect/MenuPanel/Hint
+
 
 func _ready() -> void:
+	_initialize_character_select()
 	_ensure_remote_fallback_bindings()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	_refresh_joypad_mapping()
+
+
+func _process(_delta: float) -> void:
+	if not is_character_select_active:
+		return
+	_handle_character_select_input()
+
+
+func _initialize_character_select() -> void:
+	is_character_select_active = true
+	p1_locked = false
+	p2_locked = false
+	hud.visible = false
+	_set_gameplay_enabled(false)
+	character_select.visible = true
+	_update_character_select_ui()
+
+
+func _set_gameplay_enabled(enabled: bool) -> void:
+	player_1.visible = enabled
+	player_2.visible = enabled
+	if player_1.has_method("set_physics_process"):
+		player_1.set_physics_process(enabled)
+	if player_2.has_method("set_physics_process"):
+		player_2.set_physics_process(enabled)
+	hazard_spawner.set_process(enabled)
+
+
+func _handle_character_select_input() -> void:
+	var changed := false
+
+	if not p1_locked:
+		if Input.is_action_just_pressed("p1_left"):
+			p1_character_index = wrapi(p1_character_index - 1, 0, CHARACTER_NAMES.size())
+			changed = true
+		elif Input.is_action_just_pressed("p1_right"):
+			p1_character_index = wrapi(p1_character_index + 1, 0, CHARACTER_NAMES.size())
+			changed = true
+		if Input.is_action_just_pressed("p1_attack") or Input.is_action_just_pressed("p1_jump"):
+			p1_locked = true
+			changed = true
+	elif Input.is_action_just_pressed("p1_puddle"):
+		p1_locked = false
+		changed = true
+
+	if not p2_locked:
+		if Input.is_action_just_pressed("p2_left"):
+			p2_character_index = wrapi(p2_character_index - 1, 0, CHARACTER_NAMES.size())
+			changed = true
+		elif Input.is_action_just_pressed("p2_right"):
+			p2_character_index = wrapi(p2_character_index + 1, 0, CHARACTER_NAMES.size())
+			changed = true
+		if Input.is_action_just_pressed("p2_attack") or Input.is_action_just_pressed("p2_jump"):
+			p2_locked = true
+			changed = true
+	elif Input.is_action_just_pressed("p2_puddle"):
+		p2_locked = false
+		changed = true
+
+	if changed:
+		_update_character_select_ui()
+
+	if p1_locked and p2_locked:
+		_start_match_with_selection()
+
+
+func _start_match_with_selection() -> void:
+	_apply_character_to_player(player_1, p1_character_index)
+	_apply_character_to_player(player_2, p2_character_index)
+	character_select.visible = false
+	hud.visible = true
+	is_character_select_active = false
+	_set_gameplay_enabled(true)
+
+
+func _apply_character_to_player(player_node: Node, character_index: int) -> void:
+	var color := CHARACTER_COLORS[character_index]
+	if player_node.has_method("apply_character_color"):
+		player_node.apply_character_color(color)
+
+
+func _update_character_select_ui() -> void:
+	character_title.text = "Character Select"
+	p1_choice.text = "P1: %s %s" % [CHARACTER_NAMES[p1_character_index], "✓" if p1_locked else ""]
+	p2_choice.text = "P2: %s %s" % [CHARACTER_NAMES[p2_character_index], "✓" if p2_locked else ""]
+	menu_hint.text = "Move: Left/Right   Confirm: Attack or Jump   Change: Puddle"
 
 
 func _on_joy_connection_changed(_device: int, _connected: bool) -> void:
