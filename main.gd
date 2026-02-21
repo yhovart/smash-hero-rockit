@@ -144,6 +144,15 @@ var jump_player: AudioStreamPlayer
 var arena_music_player: AudioStreamPlayer
 var arena_music_streams: Array[AudioStream] = []
 
+var settings_bgm_volume := 1.0
+var settings_sfx_volume := 1.0
+var _settings_open := false
+var _settings_cursor := 0  # 0 = BGM, 1 = SFX
+var _settings_layer: CanvasLayer
+var _settings_row_frames: Array[ColorRect] = []
+var _settings_bar_fills: Array[ColorRect] = []
+var _settings_pct_labels: Array[Label] = []
+
 # ─── Scene References ──────────────────────────────────────────────────────────
 
 @onready var all_players: Array[Node] = [$Player1, $Player2, $Player3, $Player4]
@@ -234,6 +243,7 @@ func _ready() -> void:
 			p.connect("fell_out", _on_player_fell_out)
 		if p.has_signal("jumped"):
 			p.connect("jumped", _on_player_jumped)
+	_setup_audio_buses()
 	_setup_audio_players()
 	_build_menu_asset_lookup()
 	_swap_background(0)
@@ -245,6 +255,7 @@ func _ready() -> void:
 	_build_count_screen()
 	_build_char_screen()
 	_build_arena_screen()
+	_build_settings_screen()
 	_show_phase(MenuPhase.PLAYER_COUNT)
 	_ensure_remote_fallback_bindings()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
@@ -252,6 +263,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if _settings_open:
+		_handle_settings_input()
+		return
 	if is_result_active:
 		result_input_delay = max(result_input_delay - delta, 0.0)
 		_handle_result_input()
@@ -444,11 +458,19 @@ func _build_count_screen() -> void:
 
 	var hint := _make_label("← / → : Select   •   Attack / Jump : Confirm   •   Esc : Quit", 15, Color(0.40, 0.45, 0.55))
 	hint.offset_left = 0
-	hint.offset_top = 415.0
+	hint.offset_top = 408.0
 	hint.offset_right = VIEWPORT_W
-	hint.offset_bottom = 445.0
+	hint.offset_bottom = 433.0
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_count_layer.add_child(hint)
+
+	var settings_hint := _make_label("Tab : Audio Settings", 13, Color(0.30, 0.35, 0.45))
+	settings_hint.offset_left = 0
+	settings_hint.offset_top = 435.0
+	settings_hint.offset_right = VIEWPORT_W
+	settings_hint.offset_bottom = 455.0
+	settings_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_count_layer.add_child(settings_hint)
 
 
 func _update_count_ui() -> void:
@@ -466,6 +488,9 @@ func _update_count_ui() -> void:
 func _handle_count_input() -> void:
 	if Input.is_action_just_pressed("ui_cancel"):
 		get_tree().quit()
+		return
+	if Input.is_action_just_pressed("ui_focus_next"):
+		_open_settings()
 		return
 
 	var changed := false
@@ -1173,12 +1198,18 @@ func _return_to_main_menu() -> void:
 
 func _setup_audio_players() -> void:
 	chevre_player = _create_sfx_player(_load_mp3_stream(SFX_CHEVRE_PATH))
+	chevre_player.bus = "SFX"
 	wilhelm_player = _create_sfx_player(_load_mp3_stream(SFX_WILHELM_PATH))
+	wilhelm_player.bus = "SFX"
 	finish_him_player = _create_sfx_player(_load_mp3_stream(SFX_FINISH_HIM_PATH))
+	finish_him_player.bus = "SFX"
 	victory_player = _create_sfx_player(_load_mp3_stream(SFX_VICTORY_PATH))
+	victory_player.bus = "SFX"
 	jump_player = _create_sfx_player(_load_mp3_stream(SFX_JUMP_PATH))
+	jump_player.bus = "SFX"
 	arena_music_player = AudioStreamPlayer.new()
 	arena_music_player.volume_db = -12.0
+	arena_music_player.bus = "Music"
 	add_child(arena_music_player)
 	arena_music_streams.clear()
 	for path in ARENA_BGM_PATHS:
@@ -1642,6 +1673,233 @@ func _setup_platform_visual_extras() -> void:
 
 
 # ─── Utility ──────────────────────────────────────────────────────────────────
+
+# ─── Settings Screen ──────────────────────────────────────────────────────────
+
+func _setup_audio_buses() -> void:
+	if AudioServer.get_bus_index("Music") == -1:
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(AudioServer.get_bus_count() - 1, "Music")
+	if AudioServer.get_bus_index("SFX") == -1:
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(AudioServer.get_bus_count() - 1, "SFX")
+	_apply_audio_volumes()
+
+
+func _apply_audio_volumes() -> void:
+	var bgm_idx := AudioServer.get_bus_index("Music")
+	if bgm_idx != -1:
+		AudioServer.set_bus_volume_db(bgm_idx, linear_to_db(maxf(settings_bgm_volume, 0.0001)))
+	var sfx_idx := AudioServer.get_bus_index("SFX")
+	if sfx_idx != -1:
+		AudioServer.set_bus_volume_db(sfx_idx, linear_to_db(maxf(settings_sfx_volume, 0.0001)))
+
+
+func _build_settings_screen() -> void:
+	_settings_layer = CanvasLayer.new()
+	_settings_layer.layer = 20
+	_settings_layer.visible = false
+	add_child(_settings_layer)
+
+	var backdrop := ColorRect.new()
+	backdrop.color = Color(0.0, 0.0, 0.0, 0.72)
+	backdrop.offset_right = VIEWPORT_W
+	backdrop.offset_bottom = VIEWPORT_H
+	_settings_layer.add_child(backdrop)
+
+	var pw := 520.0
+	var ph := 290.0
+	var px := (VIEWPORT_W - pw) / 2.0
+	var py := (VIEWPORT_H - ph) / 2.0
+
+	var panel_shadow := ColorRect.new()
+	panel_shadow.color = Color(0.0, 0.0, 0.0, 0.55)
+	panel_shadow.offset_left = px + 5
+	panel_shadow.offset_top = py + 5
+	panel_shadow.offset_right = px + pw + 5
+	panel_shadow.offset_bottom = py + ph + 5
+	_settings_layer.add_child(panel_shadow)
+
+	var panel := ColorRect.new()
+	panel.color = Color(0.06, 0.08, 0.12, 0.97)
+	panel.offset_left = px
+	panel.offset_top = py
+	panel.offset_right = px + pw
+	panel.offset_bottom = py + ph
+	_settings_layer.add_child(panel)
+
+	var top_bar := ColorRect.new()
+	top_bar.color = Color(0.25, 0.50, 0.95, 0.90)
+	top_bar.offset_left = px
+	top_bar.offset_top = py
+	top_bar.offset_right = px + pw
+	top_bar.offset_bottom = py + 4.0
+	_settings_layer.add_child(top_bar)
+
+	var title := _make_label("AUDIO SETTINGS", 26, Color.WHITE)
+	title.offset_left = px
+	title.offset_top = py + 14.0
+	title.offset_right = px + pw
+	title.offset_bottom = py + 54.0
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_settings_layer.add_child(title)
+
+	var divider := ColorRect.new()
+	divider.color = Color(0.30, 0.55, 1.0, 0.40)
+	divider.offset_left = px + 30.0
+	divider.offset_top = py + 58.0
+	divider.offset_right = px + pw - 30.0
+	divider.offset_bottom = py + 60.0
+	_settings_layer.add_child(divider)
+
+	_settings_row_frames.clear()
+	_settings_bar_fills.clear()
+	_settings_pct_labels.clear()
+
+	var row_labels := ["SOUNDTRACK", "SOUND EFFECTS"]
+	var row_y_offsets := [70.0, 160.0]
+
+	for i in 2:
+		var ry: float = py + row_y_offsets[i]
+
+		var frame := ColorRect.new()
+		frame.offset_left = px + 20.0
+		frame.offset_top = ry
+		frame.offset_right = px + pw - 20.0
+		frame.offset_bottom = ry + 68.0
+		frame.color = Color(0.20, 0.24, 0.32, 1.0)
+		_settings_layer.add_child(frame)
+		_settings_row_frames.append(frame)
+
+		var row_bg := ColorRect.new()
+		row_bg.color = Color(0.10, 0.12, 0.18, 1.0)
+		row_bg.offset_left = px + 22.0
+		row_bg.offset_top = ry + 2.0
+		row_bg.offset_right = px + pw - 22.0
+		row_bg.offset_bottom = ry + 66.0
+		_settings_layer.add_child(row_bg)
+
+		var row_lbl := _make_label(row_labels[i], 14, Color(0.65, 0.72, 0.88))
+		row_lbl.offset_left = px + 32.0
+		row_lbl.offset_top = ry + 6.0
+		row_lbl.offset_right = px + 240.0
+		row_lbl.offset_bottom = ry + 28.0
+		_settings_layer.add_child(row_lbl)
+
+		var track := ColorRect.new()
+		track.color = Color(0.08, 0.10, 0.16, 1.0)
+		track.offset_left = px + 32.0
+		track.offset_top = ry + 36.0
+		track.offset_right = px + pw - 68.0
+		track.offset_bottom = ry + 58.0
+		_settings_layer.add_child(track)
+
+		var fill := ColorRect.new()
+		fill.color = Color(0.25, 0.50, 0.95, 1.0)
+		fill.offset_left = px + 32.0
+		fill.offset_top = ry + 36.0
+		fill.offset_right = px + pw - 68.0  # updated by _update_settings_ui
+		fill.offset_bottom = ry + 58.0
+		_settings_layer.add_child(fill)
+		_settings_bar_fills.append(fill)
+
+		var pct_lbl := _make_label("100%", 14, Color.WHITE)
+		pct_lbl.offset_left = px + pw - 64.0
+		pct_lbl.offset_top = ry + 36.0
+		pct_lbl.offset_right = px + pw - 20.0
+		pct_lbl.offset_bottom = ry + 58.0
+		pct_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_settings_layer.add_child(pct_lbl)
+		_settings_pct_labels.append(pct_lbl)
+
+	var hint := _make_label("← / → : Adjust   •   Jump : Switch Row   •   Attack / Esc : Close", 13, Color(0.40, 0.45, 0.55))
+	hint.offset_left = px
+	hint.offset_top = py + ph - 40.0
+	hint.offset_right = px + pw
+	hint.offset_bottom = py + ph - 14.0
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_settings_layer.add_child(hint)
+
+	_update_settings_ui()
+
+
+func _open_settings() -> void:
+	_settings_open = true
+	_settings_layer.visible = true
+	_update_settings_ui()
+
+
+func _close_settings() -> void:
+	_settings_open = false
+	_settings_layer.visible = false
+
+
+func _update_settings_ui() -> void:
+	if _settings_bar_fills.size() < 2:
+		return
+	var pw := 520.0
+	var px_off := (VIEWPORT_W - pw) / 2.0
+	var bar_w := pw - 32.0 - 68.0  # track width
+	var volumes := [settings_bgm_volume, settings_sfx_volume]
+	for i in 2:
+		_settings_bar_fills[i].offset_right = px_off + 32.0 + bar_w * volumes[i]
+		_settings_pct_labels[i].text = "%d%%" % int(round(volumes[i] * 100))
+		if i == _settings_cursor:
+			_settings_row_frames[i].color = Color(1.0, 0.82, 0.22, 1.0)
+			_settings_bar_fills[i].color = Color(1.0, 0.75, 0.20, 1.0)
+		else:
+			_settings_row_frames[i].color = Color(0.20, 0.24, 0.32, 1.0)
+			_settings_bar_fills[i].color = Color(0.25, 0.50, 0.95, 1.0)
+
+
+func _handle_settings_input() -> void:
+	# Close on Escape or any player's attack button
+	if Input.is_action_just_pressed("ui_cancel"):
+		_close_settings()
+		return
+	for i in 4:
+		var acts: Array = PLAYER_ACTION_SETS[i]
+		if Input.is_action_just_pressed(acts[3]):  # attack = close
+			_close_settings()
+			return
+
+	# Switch row via jump button or keyboard up/down
+	var row_changed := false
+	if Input.is_action_just_pressed("ui_up") or Input.is_action_just_pressed("ui_down"):
+		_settings_cursor = wrapi(_settings_cursor + 1, 0, 2)
+		row_changed = true
+	if not row_changed:
+		for i in 4:
+			var acts: Array = PLAYER_ACTION_SETS[i]
+			if Input.is_action_just_pressed(acts[2]):  # jump = cycle row
+				_settings_cursor = wrapi(_settings_cursor + 1, 0, 2)
+				row_changed = true
+				break
+
+	# Adjust volume via left/right
+	var step := 0.05
+	var vol_changed := false
+	for i in 4:
+		var acts: Array = PLAYER_ACTION_SETS[i]
+		if Input.is_action_just_pressed(acts[0]):  # left = decrease
+			if _settings_cursor == 0:
+				settings_bgm_volume = clampf(settings_bgm_volume - step, 0.0, 1.0)
+			else:
+				settings_sfx_volume = clampf(settings_sfx_volume - step, 0.0, 1.0)
+			vol_changed = true
+			break
+		elif Input.is_action_just_pressed(acts[1]):  # right = increase
+			if _settings_cursor == 0:
+				settings_bgm_volume = clampf(settings_bgm_volume + step, 0.0, 1.0)
+			else:
+				settings_sfx_volume = clampf(settings_sfx_volume + step, 0.0, 1.0)
+			vol_changed = true
+			break
+
+	if row_changed or vol_changed:
+		_apply_audio_volumes()
+		_update_settings_ui()
+
 
 func _make_label(text: String, font_size: int, color: Color = Color.WHITE) -> Label:
 	var lbl := Label.new()
