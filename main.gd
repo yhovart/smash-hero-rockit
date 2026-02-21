@@ -332,8 +332,8 @@ func _update_character_select_ui() -> void:
 		p2_swatch.visible = false
 		p1_arena_label.text = "Arena: %s" % ARENA_NAMES[arena_select_index]
 		p2_arena_label.text = "Shared Select"
-		p1_controls.text = "Prev/Next Arena: A / D\nConfirm Arena: E or W\nBack: Shift"
-		p2_controls.text = "Prev/Next Arena: J / L\nConfirm Arena: K or I\nBack: O"
+		p1_controls.text = "Prev/Next Arena: A / D\nConfirm Arena: E or W\nBack: Q"
+		p2_controls.text = "Prev/Next Arena: J / L\nConfirm Arena: O or I\nBack: U"
 		arena_hint.text = "Both players can change the same arena value"
 		menu_hint.text = "Confirm: Attack/Jump • Back: Vapor • Quit: Esc"
 		arena_preview_title.visible = true
@@ -358,7 +358,7 @@ func _update_character_select_ui() -> void:
 	p1_arena_label.text = "Arena: %s" % ARENA_NAMES[arena_select_index]
 	p2_arena_label.text = "Arena: %s" % ARENA_NAMES[arena_select_index]
 	p1_controls.text = "Prev/Next Character: A / D\nLock Character: E or W\nUnlock: W"
-	p2_controls.text = "Prev/Next Character: J / L\nLock Character: K or I\nUnlock: I"
+	p2_controls.text = "Prev/Next Character: J / L\nLock Character: O or I\nUnlock: I"
 	arena_hint.text = "After both characters lock, arena selection opens with preview"
 	menu_hint.text = "Confirm: Attack/Jump • Unlock: Jump • Quit: Esc"
 	arena_preview_title.visible = false
@@ -544,8 +544,8 @@ func _ensure_remote_fallback_bindings() -> void:
 	_bind_key_if_missing("p1_jump", KEY_SPACE)
 	_bind_key_if_missing("p1_attack", KEY_ENTER)
 	_bind_key_if_missing("p1_attack", KEY_KP_ENTER)
-	_bind_key_if_missing("p1_vapor", KEY_BACKSPACE)
-	_bind_key_if_missing("p1_puddle", KEY_DOWN)
+	_bind_key_if_missing("p1_vapor", KEY_Q)
+	_bind_key_if_missing("p1_puddle", KEY_S)
 
 	_bind_joy_button_if_missing("p1_left", JOY_BUTTON_DPAD_LEFT, 0)
 	_bind_joy_button_if_missing("p1_right", JOY_BUTTON_DPAD_RIGHT, 0)

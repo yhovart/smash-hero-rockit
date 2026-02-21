@@ -404,12 +404,14 @@ offset_left = 1012.0
 offset_top = 12.0
 offset_right = 1136.0
 offset_bottom = 42.0
+alignment = 2
 
 [node name="P2Stocks" type="HBoxContainer" parent="HUD"]
 offset_left = 1012.0
 offset_top = 46.0
 offset_right = 1136.0
 offset_bottom = 70.0
+alignment = 2
 
 [node name="LegendBG" type="ColorRect" parent="HUD"]
 offset_left = 280.0
@@ -423,10 +425,10 @@ offset_left = 10.0
 offset_top = 4.0
 offset_right = 286.0
 offset_bottom = 76.0
-text = "P1 (Blue)
+text = "P1
 Move: A / D    Jump: W    Attack: E
-Hold E: Projectile    Vapor: Shift    Puddle: F
-Menu: Esc"
+Hold E: Projectile    Vapor: Q    Puddle/FastFall: S
+Drop platform: W + S    Menu: Esc"
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.5, 0.7, 1.0, 1.0)
 
@@ -435,10 +437,10 @@ offset_left = 296.0
 offset_top = 4.0
 offset_right = 582.0
 offset_bottom = 76.0
-text = "P2 (Red)
-Move: J / L    Jump: I    Attack: K
-Hold K: Projectile    Vapor: O    Puddle: ;
-Menu: Esc"
+text = "P2
+Move: J / L    Jump: I    Attack: O
+Hold O: Projectile    Vapor: U    Puddle/FastFall: K
+Drop platform: I + K    Menu: Esc"
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(1.0, 0.5, 0.45, 1.0)
 horizontal_alignment = 2
