@@ -24,6 +24,8 @@ const DASH_DURATION = 0.15
 const DASH_COOLDOWN = 0.5
 const MAX_STOCKS = 10
 const HIT_INVINCIBILITY = 0.5
+const ACTIVE_COLLISION_LAYER = 1
+const ACTIVE_COLLISION_MASK = 1
 
 @export var action_left := "p1_left"
 @export var action_right := "p1_right"
@@ -114,9 +116,31 @@ func reset_for_round() -> void:
 	stocks = MAX_STOCKS
 	visible = true
 	set_physics_process(true)
+	collision_layer = ACTIVE_COLLISION_LAYER
+	collision_mask = ACTIVE_COLLISION_MASK
+	collision_shape.disabled = false
 	hit_changed.emit(0)
 	stock_changed.emit(stocks)
 	_reset_to_spawn()
+
+
+func set_round_active(active: bool) -> void:
+	visible = active
+	set_physics_process(active)
+	if active:
+		collision_layer = ACTIVE_COLLISION_LAYER
+		collision_mask = ACTIVE_COLLISION_MASK
+		collision_shape.disabled = false
+		return
+
+	collision_layer = 0
+	collision_mask = 0
+	collision_shape.disabled = true
+	attack_hitbox.monitoring = false
+	puddle_hitbox.monitoring = false
+	$AttackVisual.visible = false
+	$ChargeVisual.visible = false
+	vapor_particles.emitting = false
 
 func _physics_process(delta: float) -> void:
 	invincible_timer = max(invincible_timer - delta, 0.0)

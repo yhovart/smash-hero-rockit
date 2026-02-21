@@ -835,13 +835,13 @@ func _reset_players_for_round() -> void:
 
 
 func _set_gameplay_enabled(enabled: bool) -> void:
-	for i in num_players:
-		all_players[i].visible = enabled
-		all_players[i].set_physics_process(enabled)
-	# Hide inactive players
-	for i in range(num_players, 4):
-		all_players[i].visible = false
-		all_players[i].set_physics_process(false)
+	for i in 4:
+		var player_enabled := enabled and i < num_players
+		if all_players[i].has_method("set_round_active"):
+			all_players[i].set_round_active(player_enabled)
+		else:
+			all_players[i].visible = player_enabled
+			all_players[i].set_physics_process(player_enabled)
 	hazard_spawner.set_process(enabled)
 
 
