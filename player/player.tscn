@@ -18,7 +18,7 @@ script = ExtResource("1_script")
 
 [node name="Avatar" type="Sprite2D" parent="."]
 position = Vector2(0, -26)
-scale = Vector2(0.022, 0.022)
+scale = Vector2(0.03, 0.03)
 
 [node name="Body" type="Polygon2D" parent="."]
 color = Color(0.15, 0.45, 0.95, 1.0)

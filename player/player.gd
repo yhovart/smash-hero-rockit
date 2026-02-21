@@ -368,7 +368,7 @@ func _update_visual_state() -> void:
 		return
 	if invincible_timer > 0.0:
 		_update_avatar_texture("dolor")
-	elif is_attacking:
+	elif is_attacking or is_charging:
 		_update_avatar_texture("attack")
 	elif absf(velocity.x) > 5.0:
 		_update_avatar_texture("right" if facing >= 0.0 else "left")
