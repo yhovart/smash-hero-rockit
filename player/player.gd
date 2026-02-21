@@ -17,16 +17,14 @@ const FAST_FALL_SPEED = 900.0
 const VAPOR_SPEED = 120.0
 const VAPOR_FLOAT = -80.0
 const VAPOR_MAX_TIME = 2.0
-const VAPOR_LANDING_STUN_TIME = 3.0
 const ATTACK_KNOCKBACK = 800.0
 const STOMP_BOUNCE = -350.0
 const DASH_SPEED = 600.0
 const DASH_DURATION = 0.15
 const DASH_COOLDOWN = 0.5
-const MAX_STOCKS = 10
+const MAX_HITS = 3
+const MAX_STOCKS = 3
 const HIT_INVINCIBILITY = 0.5
-const ACTIVE_COLLISION_LAYER = 1
-const ACTIVE_COLLISION_MASK = 1
 
 @export var action_left := "p1_left"
 @export var action_right := "p1_right"
@@ -43,6 +41,7 @@ var projectile_scene: PackedScene = preload("res://player/water_projectile.tscn"
 
 var form: Form = Form.WATER
 var form_timer := 0.0
+var hits_taken := 0
 var invincible_timer := 0.0
 var is_attacking := false
 var attack_timer := 0.0
@@ -53,7 +52,6 @@ const CHARGE_THRESHOLD = 0.4
 const PROJECTILE_COOLDOWN = 0.8
 var projectile_cooldown_timer := 0.0
 var stunned_timer := 0.0
-var vapor_landing_stun_pending := false
 var drop_through_timer := 0.0
 const DROP_THROUGH_TIME = 0.25
 var coyote_timer := 0.0
@@ -94,7 +92,7 @@ func _ready() -> void:
 	body.visible = not has_avatar
 	shine.visible = not has_avatar
 	_update_avatar_texture("face")
-	hit_changed.emit.call_deferred(0)
+	hit_changed.emit.call_deferred(hits_taken)
 	stock_changed.emit.call_deferred(stocks)
 
 
@@ -116,40 +114,17 @@ func apply_character_profile(new_color: Color, new_asset_prefix: String) -> void
 
 func reset_for_round() -> void:
 	stocks = MAX_STOCKS
+	hits_taken = 0
 	visible = true
 	set_physics_process(true)
-	collision_layer = ACTIVE_COLLISION_LAYER
-	collision_mask = ACTIVE_COLLISION_MASK
-	collision_shape.disabled = false
-	hit_changed.emit(0)
+	hit_changed.emit(hits_taken)
 	stock_changed.emit(stocks)
 	_reset_to_spawn()
-
-
-func set_round_active(active: bool) -> void:
-	visible = active
-	set_physics_process(active)
-	if active:
-		collision_layer = ACTIVE_COLLISION_LAYER
-		collision_mask = ACTIVE_COLLISION_MASK
-		collision_shape.disabled = false
-		return
-
-	collision_layer = 0
-	collision_mask = 0
-	collision_shape.disabled = true
-	attack_hitbox.monitoring = false
-	puddle_hitbox.monitoring = false
-	$AttackVisual.visible = false
-	$ChargeVisual.visible = false
-	vapor_particles.emitting = false
 
 func _physics_process(delta: float) -> void:
 	invincible_timer = max(invincible_timer - delta, 0.0)
 	projectile_cooldown_timer = max(projectile_cooldown_timer - delta, 0.0)
 	dash_cooldown_timer = max(dash_cooldown_timer - delta, 0.0)
-	if stunned_timer > 0.0 and not vapor_landing_stun_pending:
-		stunned_timer = max(stunned_timer - delta, 0.0)
 
 	if drop_through_timer > 0.0:
 		drop_through_timer -= delta
@@ -158,7 +133,7 @@ func _physics_process(delta: float) -> void:
 
 	if invincible_timer > 0.0:
 		avatar.modulate.a = 0.5 if fmod(invincible_timer, 0.15) > 0.075 else 1.0
-	elif _is_stunned():
+	elif stunned_timer > 0.0:
 		avatar.modulate = Color(1.0, 0.3, 0.3, 0.9 if fmod(Time.get_ticks_msec() / 1000.0, 0.05) > 0.025 else 1.0)
 	else:
 		avatar.modulate = Color(1.0, 1.0, 1.0, 1.0)
@@ -183,15 +158,14 @@ func _physics_process(delta: float) -> void:
 
 	_update_visual_state()
 
-	if _is_stunned():
+	if stunned_timer > 0.0:
 		velocity.x = 0.0
 		velocity.y += get_gravity().y * delta
 
 	move_and_slide()
 
-	if vapor_landing_stun_pending and is_on_floor():
-		vapor_landing_stun_pending = false
-		stunned_timer = VAPOR_LANDING_STUN_TIME
+	if stunned_timer > 0.0 and is_on_floor():
+		stunned_timer = 0.0
 
 	if is_fast_falling:
 		_check_stomp()
@@ -200,35 +174,26 @@ func _physics_process(delta: float) -> void:
 		_fall_death()
 
 func _fall_death() -> void:
-	fell_out.emit(maxi(stocks - 2, 0))
-	_apply_damage(2, 0.0, false, true)
+	fell_out.emit(stocks - 1)
+	_lose_stock()
 
-func _apply_damage(damage: int, knockback_dir: float, apply_knockback: bool, respawn_on_survive: bool = false) -> void:
-	if damage <= 0:
-		return
-	stocks = maxi(stocks - damage, 0)
-	var eliminated_now := stocks <= 0
-	got_hit.emit(stocks, eliminated_now)
-	if apply_knockback:
-		invincible_timer = HIT_INVINCIBILITY
-		velocity.x = knockback_dir * ATTACK_KNOCKBACK
-		velocity.y = -200.0
+func _lose_stock() -> void:
+	stocks -= 1
 	stock_changed.emit(stocks)
-	hit_changed.emit(MAX_STOCKS - stocks)
-	if eliminated_now:
-		died.emit()
+	died.emit()
+	hits_taken = 0
+	hit_changed.emit(hits_taken)
+	if stocks <= 0:
 		eliminated.emit()
 		set_physics_process(false)
 		visible = false
 		return
-	if respawn_on_survive:
-		_reset_to_spawn()
+	_reset_to_spawn()
 
 func _reset_to_spawn() -> void:
 	if form != Form.WATER:
 		_exit_form()
 	stunned_timer = 0.0
-	vapor_landing_stun_pending = false
 	is_charging = false
 	$ChargeVisual.visible = false
 	charge_time = 0.0
@@ -246,7 +211,7 @@ func _reset_to_spawn() -> void:
 	velocity = Vector2.ZERO
 
 func _handle_dash(delta: float) -> void:
-	if _is_stunned():
+	if stunned_timer > 0.0:
 		return
 	if is_dashing:
 		dash_timer -= delta
@@ -264,7 +229,7 @@ func _handle_dash(delta: float) -> void:
 		velocity.y = 0.0
 
 func _handle_form_switch(_delta: float) -> void:
-	if _is_stunned():
+	if stunned_timer > 0.0:
 		return
 
 	if form == Form.VAPOR:
@@ -276,7 +241,7 @@ func _handle_form_switch(_delta: float) -> void:
 		_enter_vapor()
 
 func _handle_attack(delta: float) -> void:
-	if _is_stunned():
+	if stunned_timer > 0.0:
 		return
 	if attack_timer > 0.0:
 		attack_timer -= delta
@@ -330,7 +295,7 @@ func _fire_projectile() -> void:
 	get_parent().add_child(proj)
 
 func _normal_physics(delta: float) -> void:
-	if is_dashing or _is_stunned():
+	if is_dashing or stunned_timer > 0.0:
 		return
 
 	var on_floor := is_on_floor()
@@ -418,12 +383,7 @@ func _exit_vapor_timeout() -> void:
 	puddle_hitbox.monitoring = false
 	scale = Vector2(1.0, 1.0)
 	velocity = Vector2.ZERO
-	vapor_landing_stun_pending = true
-	stunned_timer = 0.0
-
-
-func _is_stunned() -> bool:
-	return stunned_timer > 0.0 or vapor_landing_stun_pending
+	stunned_timer = 1.0
 
 
 func _exit_form() -> void:
@@ -459,7 +419,16 @@ func _check_stomp() -> void:
 func take_hit(_damage: int, knockback_dir: float) -> void:
 	if invincible_timer > 0.0 or form == Form.VAPOR:
 		return
-	_apply_damage(maxi(_damage, 1), knockback_dir, true)
+	hits_taken += 1
+	var will_lose_stock := hits_taken >= MAX_HITS
+	var next_stocks := stocks - 1 if will_lose_stock else stocks
+	got_hit.emit(next_stocks, will_lose_stock)
+	invincible_timer = HIT_INVINCIBILITY
+	velocity.x = knockback_dir * ATTACK_KNOCKBACK
+	velocity.y = -200.0
+	hit_changed.emit(hits_taken)
+	if hits_taken >= MAX_HITS:
+		_lose_stock()
 
 func _on_attack_hitbox_area_entered(area: Area2D) -> void:
 	if not area.has_method("reflect"):

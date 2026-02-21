@@ -86,6 +86,12 @@ const SFX_WILHELM_PATH := "res://assets/sounds/wilhelm.mp3"
 const SFX_FINISH_HIM_PATH := "res://assets/sounds/finish-him.mp3"
 const SFX_VICTORY_PATH := "res://assets/sounds/victoryff.swf.mp3"
 const SFX_JUMP_PATH := "res://assets/sounds/jump.mp3"
+const BGM_BIT_SHIFT_PATH := "res://assets/sounds/bit-shift-kevin-macleod-main-version-24901-03-12.mp3"
+const ARENA_BGM_PATHS: Array[String] = [
+	BGM_BIT_SHIFT_PATH,
+	BGM_BIT_SHIFT_PATH,
+	BGM_BIT_SHIFT_PATH,
+]
 const SPAWN_Y := 500.0
 const VIEWPORT_W := 1152.0
 const VIEWPORT_H := 648.0
@@ -132,6 +138,8 @@ var wilhelm_player: AudioStreamPlayer
 var finish_him_player: AudioStreamPlayer
 var victory_player: AudioStreamPlayer
 var jump_player: AudioStreamPlayer
+var arena_music_player: AudioStreamPlayer
+var arena_music_streams: Array[AudioStream] = []
 
 # ─── Scene References ──────────────────────────────────────────────────────────
 
@@ -1027,6 +1035,7 @@ func _return_to_main_menu() -> void:
 	result_input_delay = 0.0
 	end_screen.visible = false
 	_set_gameplay_enabled(false)
+	_stop_arena_music()
 	hud.visible = false
 	_show_phase(MenuPhase.PLAYER_COUNT)
 
@@ -1039,6 +1048,12 @@ func _setup_audio_players() -> void:
 	finish_him_player = _create_sfx_player(_load_mp3_stream(SFX_FINISH_HIM_PATH))
 	victory_player = _create_sfx_player(_load_mp3_stream(SFX_VICTORY_PATH))
 	jump_player = _create_sfx_player(_load_mp3_stream(SFX_JUMP_PATH))
+	arena_music_player = AudioStreamPlayer.new()
+	arena_music_player.volume_db = -12.0
+	add_child(arena_music_player)
+	arena_music_streams.clear()
+	for path in ARENA_BGM_PATHS:
+		arena_music_streams.append(_load_mp3_stream(path))
 
 
 func _create_sfx_player(stream: AudioStream) -> AudioStreamPlayer:
@@ -1064,6 +1079,28 @@ func _play_sound(player: AudioStreamPlayer) -> void:
 	player.play()
 
 
+func _play_arena_music(arena_index: int) -> void:
+	if arena_music_player == null:
+		return
+	if arena_index < 0 or arena_index >= arena_music_streams.size():
+		return
+	var stream: AudioStream = arena_music_streams[arena_index]
+	if stream == null:
+		return
+	if stream is AudioStreamMP3:
+		stream.loop = true
+	if arena_music_player.stream == stream and arena_music_player.playing:
+		return
+	arena_music_player.stream = stream
+	arena_music_player.play()
+
+
+func _stop_arena_music() -> void:
+	if arena_music_player == null:
+		return
+	arena_music_player.stop()
+
+
 # ─── Arena / Background Management ────────────────────────────────────────────
 
 func _apply_arena(arena_index: int) -> void:
@@ -1080,6 +1117,7 @@ func _apply_arena(arena_index: int) -> void:
 
 	_resize_floor(ARENA_FLOOR_HALF_WIDTHS[arena_index])
 	_swap_background(arena_index)
+	_play_arena_music(arena_index)
 	_apply_arena_colors(arena_index)
 
 	match arena_index:
