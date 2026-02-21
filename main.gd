@@ -220,8 +220,11 @@ func _show_phase(phase: MenuPhase) -> void:
 	_arena_layer.visible = (phase == MenuPhase.ARENA_SELECT)
 	hud.visible = (phase == MenuPhase.NONE and not is_result_active)
 	if phase == MenuPhase.PLAYER_COUNT:
+		_restore_default_keyboard_layout()
 		_update_count_ui()
 	elif phase == MenuPhase.CHARACTER_SELECT:
+		if num_players >= 3:
+			_apply_keyboard_layout_for_player_count()
 		_reset_char_select()
 		_update_char_ui()
 	elif phase == MenuPhase.ARENA_SELECT:
@@ -946,7 +949,6 @@ func _return_to_main_menu() -> void:
 	end_screen.visible = false
 	_set_gameplay_enabled(false)
 	hud.visible = false
-	_restore_default_keyboard_layout()
 	_show_phase(MenuPhase.PLAYER_COUNT)
 
 
