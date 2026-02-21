@@ -3,7 +3,17 @@ extends CharacterBody2D
 enum Form { WATER, VAPOR, PUDDLE }
 
 const SPEED = 300.0
-const JUMP_VELOCITY = -550.0
+const ACCELERATION = 3200.0
+const DECELERATION = 4000.0
+const AIR_ACCELERATION = 2400.0
+const AIR_DECELERATION = 1400.0
+const JUMP_VELOCITY = -480.0
+const FALL_GRAVITY_MULT = 2.5
+const LOW_JUMP_GRAVITY_MULT = 4.5
+const COYOTE_TIME = 0.1
+const JUMP_BUFFER_TIME = 0.12
+const DOUBLE_JUMP_VELOCITY = -420.0
+const FAST_FALL_SPEED = 900.0
 const VAPOR_SPEED = 120.0
 const VAPOR_FLOAT = -80.0
 const VAPOR_MAX_TIME = 3.0
@@ -43,6 +53,11 @@ var puddle_buffer := 0.0
 const PUDDLE_BUFFER_TIME = 0.2
 var drop_through_timer := 0.0
 const DROP_THROUGH_TIME = 0.25
+var coyote_timer := 0.0
+var jump_buffer_timer := 0.0
+var was_on_floor := false
+var has_double_jump := true
+var is_fast_falling := false
 const VISUAL_STATES := ["face", "left", "right", "attack", "dolor"]
 var visual_textures: Dictionary = {}
 
@@ -141,6 +156,10 @@ func _reset_to_spawn() -> void:
 	$ChargeVisual.visible = false
 	charge_time = 0.0
 	drop_through_timer = 0.0
+	coyote_timer = 0.0
+	jump_buffer_timer = 0.0
+	has_double_jump = true
+	is_fast_falling = false
 	set_collision_mask_value(1, true)
 	invincible_timer = HIT_INVINCIBILITY
 	global_position = spawn_position
@@ -227,18 +246,57 @@ func _fire_projectile() -> void:
 	get_parent().add_child(proj)
 
 func _normal_physics(delta: float) -> void:
-	if not is_on_floor():
-		velocity += get_gravity() * delta
+	var on_floor := is_on_floor()
 
-	if Input.is_action_just_pressed(action_jump) and is_on_floor():
+	if on_floor:
+		coyote_timer = COYOTE_TIME
+		has_double_jump = true
+		is_fast_falling = false
+	else:
+		coyote_timer = max(coyote_timer - delta, 0.0)
+
+	if Input.is_action_just_pressed(action_jump):
+		jump_buffer_timer = JUMP_BUFFER_TIME
+	else:
+		jump_buffer_timer = max(jump_buffer_timer - delta, 0.0)
+
+	if not on_floor:
+		var grav := get_gravity()
+		if is_fast_falling:
+			velocity.y = FAST_FALL_SPEED
+		elif velocity.y > 0.0:
+			velocity += grav * FALL_GRAVITY_MULT * delta
+		elif not Input.is_action_pressed(action_jump):
+			velocity += grav * LOW_JUMP_GRAVITY_MULT * delta
+		else:
+			velocity += grav * delta
+
+	if Input.is_action_just_pressed(action_puddle) and not on_floor and velocity.y >= 0.0:
+		is_fast_falling = true
+
+	var can_jump := coyote_timer > 0.0
+	if jump_buffer_timer > 0.0 and can_jump:
 		velocity.y = JUMP_VELOCITY
+		jump_buffer_timer = 0.0
+		coyote_timer = 0.0
+		is_fast_falling = false
+	elif jump_buffer_timer > 0.0 and not can_jump and has_double_jump:
+		velocity.y = DOUBLE_JUMP_VELOCITY
+		jump_buffer_timer = 0.0
+		has_double_jump = false
+		is_fast_falling = false
 
 	var direction := Input.get_axis(action_left, action_right)
+	var accel: float
+	if on_floor:
+		accel = ACCELERATION if direction else DECELERATION
+	else:
+		accel = AIR_ACCELERATION if direction else AIR_DECELERATION
 	if direction:
-		velocity.x = direction * SPEED
+		velocity.x = move_toward(velocity.x, direction * SPEED, accel * delta)
 		facing = sign(direction)
 	else:
-		velocity.x = move_toward(velocity.x, 0, SPEED)
+		velocity.x = move_toward(velocity.x, 0.0, accel * delta)
 
 func _vapor_physics(_delta: float) -> void:
 	velocity.y = VAPOR_FLOAT
