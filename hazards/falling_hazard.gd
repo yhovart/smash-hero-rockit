@@ -74,7 +74,7 @@ func _on_body_entered(body_node: Node2D) -> void:
 	if deflected:
 		if body_node.is_in_group("player") and body_node.has_method("take_hit"):
 			hit_done = true
-			body_node.take_hit(1, horizontal_dir)
+			body_node.take_hit(3, horizontal_dir)
 			_explode()
 		return
 

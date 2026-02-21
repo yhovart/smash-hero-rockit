@@ -22,8 +22,7 @@ const STOMP_BOUNCE = -350.0
 const DASH_SPEED = 600.0
 const DASH_DURATION = 0.15
 const DASH_COOLDOWN = 0.5
-const MAX_HITS = 3
-const MAX_STOCKS = 3
+const MAX_STOCKS = 10
 const HIT_INVINCIBILITY = 0.5
 
 @export var action_left := "p1_left"
@@ -41,7 +40,6 @@ var projectile_scene: PackedScene = preload("res://player/water_projectile.tscn"
 
 var form: Form = Form.WATER
 var form_timer := 0.0
-var hits_taken := 0
 var invincible_timer := 0.0
 var is_attacking := false
 var attack_timer := 0.0
@@ -92,7 +90,7 @@ func _ready() -> void:
 	body.visible = not has_avatar
 	shine.visible = not has_avatar
 	_update_avatar_texture("face")
-	hit_changed.emit.call_deferred(hits_taken)
+	hit_changed.emit.call_deferred(0)
 	stock_changed.emit.call_deferred(stocks)
 
 
@@ -114,10 +112,9 @@ func apply_character_profile(new_color: Color, new_asset_prefix: String) -> void
 
 func reset_for_round() -> void:
 	stocks = MAX_STOCKS
-	hits_taken = 0
 	visible = true
 	set_physics_process(true)
-	hit_changed.emit(hits_taken)
+	hit_changed.emit(0)
 	stock_changed.emit(stocks)
 	_reset_to_spawn()
 
@@ -174,21 +171,29 @@ func _physics_process(delta: float) -> void:
 		_fall_death()
 
 func _fall_death() -> void:
-	fell_out.emit(stocks - 1)
-	_lose_stock()
+	fell_out.emit(maxi(stocks - 2, 0))
+	_apply_damage(2, 0.0, false, true)
 
-func _lose_stock() -> void:
-	stocks -= 1
+func _apply_damage(damage: int, knockback_dir: float, apply_knockback: bool, respawn_on_survive: bool = false) -> void:
+	if damage <= 0:
+		return
+	stocks = maxi(stocks - damage, 0)
+	var eliminated_now := stocks <= 0
+	got_hit.emit(stocks, eliminated_now)
+	if apply_knockback:
+		invincible_timer = HIT_INVINCIBILITY
+		velocity.x = knockback_dir * ATTACK_KNOCKBACK
+		velocity.y = -200.0
 	stock_changed.emit(stocks)
-	died.emit()
-	hits_taken = 0
-	hit_changed.emit(hits_taken)
-	if stocks <= 0:
+	hit_changed.emit(MAX_STOCKS - stocks)
+	if eliminated_now:
+		died.emit()
 		eliminated.emit()
 		set_physics_process(false)
 		visible = false
 		return
-	_reset_to_spawn()
+	if respawn_on_survive:
+		_reset_to_spawn()
 
 func _reset_to_spawn() -> void:
 	if form != Form.WATER:
@@ -419,16 +424,7 @@ func _check_stomp() -> void:
 func take_hit(_damage: int, knockback_dir: float) -> void:
 	if invincible_timer > 0.0 or form == Form.VAPOR:
 		return
-	hits_taken += 1
-	var will_lose_stock := hits_taken >= MAX_HITS
-	var next_stocks := stocks - 1 if will_lose_stock else stocks
-	got_hit.emit(next_stocks, will_lose_stock)
-	invincible_timer = HIT_INVINCIBILITY
-	velocity.x = knockback_dir * ATTACK_KNOCKBACK
-	velocity.y = -200.0
-	hit_changed.emit(hits_taken)
-	if hits_taken >= MAX_HITS:
-		_lose_stock()
+	_apply_damage(maxi(_damage, 1), knockback_dir, true)
 
 func _on_attack_hitbox_area_entered(area: Area2D) -> void:
 	if not area.has_method("reflect"):

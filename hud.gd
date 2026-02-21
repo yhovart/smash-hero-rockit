@@ -1,11 +1,10 @@
 extends CanvasLayer
 
-const MAX_HITS = 3
-const HIT_ICON_SIZE = 28.0
-const TROPHY_ICON_SIZE = 22.0
+const MAX_HEARTS = 10
+const HEARTS_PER_ROW = 5
+const HEART_ICON_SIZE = 18.0
 
-var hits := [0, 0, 0, 0]
-var face_textures: Array = [null, null, null, null]
+var health_points := [MAX_HEARTS, MAX_HEARTS, MAX_HEARTS, MAX_HEARTS]
 var _active_count := 2
 
 @onready var hit_containers: Array[HBoxContainer] = [$P1Shields, $P2Shields, $P3Shields, $P4Shields]
@@ -15,7 +14,7 @@ var _active_count := 2
 
 func _ready() -> void:
 	for i in 4:
-		_rebuild_hit_icons(hit_containers[i], MAX_HITS, face_textures[i])
+		set_player_stocks(i, MAX_HEARTS)
 	configure_for_players(2)
 
 
@@ -71,27 +70,25 @@ func _position_container(c: Control, left: float, top: float, right: float, bott
 
 # ─── Generic methods ───────────────────────────────────────────────────────────
 
-func set_player_hits(player_index: int, hit_count: int) -> void:
-	if player_index < 0 or player_index >= 4:
-		return
-	hits[player_index] = hit_count
-	if is_inside_tree() and hit_containers[player_index] != null:
-		_rebuild_hit_icons(hit_containers[player_index], MAX_HITS - hit_count, face_textures[player_index])
+func set_player_hits(_player_index: int, _hit_count: int) -> void:
+	return
 
 
 func set_player_stocks(player_index: int, stocks: int) -> void:
 	if player_index < 0 or player_index >= 4:
 		return
-	if is_inside_tree() and stock_containers[player_index] != null:
-		_rebuild_trophy_icons(stock_containers[player_index], stocks)
-
-
-func set_player_face(player_index: int, texture: Texture2D) -> void:
-	if player_index < 0 or player_index >= 4:
+	var hp := clampi(stocks, 0, MAX_HEARTS)
+	health_points[player_index] = hp
+	if not is_inside_tree():
 		return
-	face_textures[player_index] = texture
-	if is_inside_tree() and hit_containers[player_index] != null:
-		_rebuild_hit_icons(hit_containers[player_index], MAX_HITS - hits[player_index], texture)
+	var top := mini(hp, HEARTS_PER_ROW)
+	var bottom := maxi(hp - HEARTS_PER_ROW, 0)
+	_rebuild_heart_icons(hit_containers[player_index], top)
+	_rebuild_heart_icons(stock_containers[player_index], bottom)
+
+
+func set_player_face(_player_index: int, _texture: Texture2D) -> void:
+	return
 
 
 # ─── Backward-compatible signal methods (used by scene connections) ────────────
@@ -112,27 +109,12 @@ func set_p4_face(t: Texture2D) -> void: set_player_face(3, t)
 
 # ─── Icon builders ─────────────────────────────────────────────────────────────
 
-func _rebuild_hit_icons(container: HBoxContainer, remaining: int, face_tex: Texture2D) -> void:
-	for child in container.get_children():
-		child.queue_free()
-	for i in MAX_HITS:
-		var icon := TextureRect.new()
-		icon.custom_minimum_size = Vector2(HIT_ICON_SIZE, HIT_ICON_SIZE)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		if face_tex != null:
-			icon.texture = face_tex
-		if i >= remaining:
-			icon.modulate = Color(0.25, 0.25, 0.25, 0.4)
-		container.add_child(icon)
-
-
-func _rebuild_trophy_icons(container: HBoxContainer, count: int) -> void:
+func _rebuild_heart_icons(container: HBoxContainer, count: int) -> void:
 	for child in container.get_children():
 		child.queue_free()
 	for i in count:
 		var heart := HeartIcon.new()
-		heart.custom_minimum_size = Vector2(TROPHY_ICON_SIZE, TROPHY_ICON_SIZE)
+		heart.custom_minimum_size = Vector2(HEART_ICON_SIZE, HEART_ICON_SIZE)
 		container.add_child(heart)
 
 
