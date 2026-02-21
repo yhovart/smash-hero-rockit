@@ -10,10 +10,29 @@ const VAPOR_MAX_TIME = 3.0
 const PUDDLE_SPEED = 150.0
 const PUDDLE_MAX_TIME = 3.0
 const FORM_COOLDOWN = 2.0
+const ATTACK_KNOCKBACK = 500.0
+const MAX_HITS = 3
+const HIT_INVINCIBILITY = 0.5
+
+@export var action_left := "p1_left"
+@export var action_right := "p1_right"
+@export var action_jump := "p1_jump"
+@export var action_attack := "p1_attack"
+@export var action_vapor := "p1_vapor"
+@export var action_puddle := "p1_puddle"
+@export var body_color := Color(0.15, 0.45, 0.95, 1.0)
 
 var form: Form = Form.WATER
 var form_timer := 0.0
 var cooldown_timer := 0.0
+var hits_taken := 0
+var invincible_timer := 0.0
+var is_attacking := false
+var attack_timer := 0.0
+var facing := 1.0
+
+signal hit_changed(hits: int)
+signal died
 
 @onready var body: Polygon2D = $Body
 @onready var shine: Polygon2D = $Shine
@@ -21,19 +40,23 @@ var cooldown_timer := 0.0
 @onready var puddle_body: Polygon2D = $PuddleBody
 @onready var puddle_hitbox: Area2D = $PuddleHitbox
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
+@onready var attack_hitbox: Area2D = $AttackHitbox
+
+func _ready() -> void:
+	body.color = body_color
+	hit_changed.emit.call_deferred(hits_taken)
 
 func _physics_process(delta: float) -> void:
 	cooldown_timer = max(cooldown_timer - delta, 0.0)
+	invincible_timer = max(invincible_timer - delta, 0.0)
 
-	if cooldown_timer <= 0.0:
-		if Input.is_action_just_pressed("vapor") and form == Form.WATER:
-			_enter_vapor()
-		elif Input.is_action_just_released("vapor") and form == Form.VAPOR:
-			_exit_form()
-		elif Input.is_action_just_pressed("puddle") and form == Form.WATER and is_on_floor():
-			_enter_puddle()
-		elif Input.is_action_just_released("puddle") and form == Form.PUDDLE:
-			_exit_form()
+	if invincible_timer > 0.0:
+		body.modulate.a = 0.5 if fmod(invincible_timer, 0.15) > 0.075 else 1.0
+	elif form == Form.WATER:
+		body.modulate.a = 1.0
+
+	_handle_attack(delta)
+	_handle_form_switch()
 
 	if form != Form.WATER:
 		form_timer -= delta
@@ -50,35 +73,67 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
+func _handle_form_switch() -> void:
+	if cooldown_timer > 0.0:
+		return
+	if Input.is_action_just_pressed(action_vapor) and form == Form.WATER:
+		_enter_vapor()
+	elif Input.is_action_just_released(action_vapor) and form == Form.VAPOR:
+		_exit_form()
+	elif Input.is_action_just_pressed(action_puddle) and form == Form.WATER and is_on_floor():
+		_enter_puddle()
+	elif Input.is_action_just_released(action_puddle) and form == Form.PUDDLE:
+		_exit_form()
+
+func _handle_attack(delta: float) -> void:
+	if attack_timer > 0.0:
+		attack_timer -= delta
+		if attack_timer <= 0.0:
+			is_attacking = false
+			attack_hitbox.monitoring = false
+			$AttackVisual.visible = false
+		return
+
+	if Input.is_action_just_pressed(action_attack) and form == Form.WATER:
+		is_attacking = true
+		attack_timer = 0.25
+		attack_hitbox.monitoring = true
+		attack_hitbox.position.x = facing * 20.0
+		$AttackVisual.visible = true
+		$AttackVisual.position.x = facing * 20.0
+		$AttackVisual.scale.x = facing
+
 func _normal_physics(delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
-	if Input.is_action_just_pressed("ui_accept") and is_on_floor():
+	if Input.is_action_just_pressed(action_jump) and is_on_floor():
 		velocity.y = JUMP_VELOCITY
 
-	var direction := Input.get_axis("ui_left", "ui_right")
+	var direction := Input.get_axis(action_left, action_right)
 	if direction:
 		velocity.x = direction * SPEED
+		facing = sign(direction)
+		body.scale.x = facing
 	else:
 		velocity.x = move_toward(velocity.x, 0, SPEED)
 
 func _vapor_physics(_delta: float) -> void:
 	velocity.y = VAPOR_FLOAT
-
-	var direction := Input.get_axis("ui_left", "ui_right")
+	var direction := Input.get_axis(action_left, action_right)
 	if direction:
 		velocity.x = direction * VAPOR_SPEED
+		facing = sign(direction)
 	else:
 		velocity.x = move_toward(velocity.x, 0, VAPOR_SPEED)
 
 func _puddle_physics(delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
-
-	var direction := Input.get_axis("ui_left", "ui_right")
+	var direction := Input.get_axis(action_left, action_right)
 	if direction:
 		velocity.x = direction * PUDDLE_SPEED
+		facing = sign(direction)
 	else:
 		velocity.x = move_toward(velocity.x, 0, PUDDLE_SPEED)
 
@@ -107,7 +162,6 @@ func _exit_form() -> void:
 	var was_puddle := form == Form.PUDDLE
 	form = Form.WATER
 	cooldown_timer = FORM_COOLDOWN
-
 	body.visible = true
 	body.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	shine.visible = true
@@ -116,7 +170,30 @@ func _exit_form() -> void:
 	puddle_body.visible = false
 	puddle_hitbox.monitoring = false
 	scale = Vector2(1.0, 1.0)
-
 	if was_puddle:
 		collision_shape.position = Vector2(0, 4)
 		collision_shape.shape.radius = 14.0
+
+func take_hit(_damage: int, knockback_dir: float) -> void:
+	if invincible_timer > 0.0 or form == Form.VAPOR:
+		return
+	hits_taken += 1
+	invincible_timer = HIT_INVINCIBILITY
+	velocity.x = knockback_dir * ATTACK_KNOCKBACK
+	velocity.y = -200.0
+	hit_changed.emit(hits_taken)
+	if hits_taken >= MAX_HITS:
+		died.emit()
+		hits_taken = 0
+		hit_changed.emit(hits_taken)
+		global_position = Vector2(576, 400)
+		velocity = Vector2.ZERO
+
+func _on_attack_hitbox_body_entered(other: Node2D) -> void:
+	if other == self or not other.is_in_group("player"):
+		return
+	if other.has_method("take_hit"):
+		var dir: float = sign(other.global_position.x - global_position.x)
+		if dir == 0.0:
+			dir = facing
+		other.take_hit(1, dir)

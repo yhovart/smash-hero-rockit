@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3 uid="uid://bmain001"]
 
 [ext_resource type="PackedScene" uid="uid://bplayer001" path="res://player/player.tscn" id="1_player"]
-[ext_resource type="PackedScene" uid="uid://bfire001" path="res://enemies/fire_enemy.tscn" id="2_fire"]
+[ext_resource type="Script" path="res://hud.gd" id="2_hud"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(800, 32)
@@ -17,8 +17,79 @@ size = Vector2(160, 16)
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(576, 324)
 
-[node name="Player" parent="." groups=["player"] instance=ExtResource("1_player")]
-position = Vector2(200, 400)
+[node name="Player1" parent="." groups=["player"] instance=ExtResource("1_player")]
+position = Vector2(300, 500)
+
+[node name="Player2" parent="." groups=["player"] instance=ExtResource("1_player")]
+position = Vector2(850, 500)
+action_left = "p2_left"
+action_right = "p2_right"
+action_jump = "p2_jump"
+action_attack = "p2_attack"
+action_vapor = "p2_vapor"
+action_puddle = "p2_puddle"
+body_color = Color(0.9, 0.2, 0.15, 1.0)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("2_hud")
+
+[node name="P1Shields" type="HBoxContainer" parent="HUD"]
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 120.0
+offset_bottom = 42.0
+
+[node name="P1Label" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 44.0
+offset_right = 120.0
+offset_bottom = 60.0
+text = "P1"
+horizontal_alignment = 0
+
+[node name="P2Shields" type="HBoxContainer" parent="HUD"]
+offset_left = 1032.0
+offset_top = 12.0
+offset_right = 1136.0
+offset_bottom = 42.0
+
+[node name="P2Label" type="Label" parent="HUD"]
+offset_left = 1032.0
+offset_top = 44.0
+offset_right = 1136.0
+offset_bottom = 60.0
+text = "P2"
+horizontal_alignment = 2
+
+[node name="LegendBG" type="ColorRect" parent="HUD"]
+offset_left = 310.0
+offset_top = 580.0
+offset_right = 842.0
+offset_bottom = 648.0
+color = Color(0.0, 0.0, 0.0, 0.5)
+
+[node name="P1Legend" type="Label" parent="HUD/LegendBG"]
+offset_left = 10.0
+offset_top = 4.0
+offset_right = 260.0
+offset_bottom = 64.0
+text = "P1 (Blue)
+Move: A / D    Jump: W
+Attack: E    Vapor: Shift    Puddle: S"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.5, 0.7, 1.0, 1.0)
+
+[node name="P2Legend" type="Label" parent="HUD/LegendBG"]
+offset_left = 272.0
+offset_top = 4.0
+offset_right = 522.0
+offset_bottom = 64.0
+text = "P2 (Red)
+Move: ← / →    Jump: ↑
+Attack: Num0    Vapor: Ctrl    Puddle: ↓"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(1.0, 0.5, 0.45, 1.0)
+horizontal_alignment = 2
 
 [node name="Floor" type="StaticBody2D" parent="."]
 position = Vector2(576, 600)
@@ -72,11 +143,5 @@ color = Color(0.2, 0.7, 0.2, 1.0)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform3"]
 shape = SubResource("RectangleShape2D_plat1")
 
-[node name="FireEnemy1" parent="." instance=ExtResource("2_fire")]
-position = Vector2(550, 572)
-
-[node name="FireEnemy2" parent="." instance=ExtResource("2_fire")]
-position = Vector2(350, 452)
-
-[node name="FireEnemy3" parent="." instance=ExtResource("2_fire")]
-position = Vector2(450, 252)
+[connection signal="hit_changed" from="Player1" to="HUD" method="set_p1_hits"]
+[connection signal="hit_changed" from="Player2" to="HUD" method="set_p2_hits"]
