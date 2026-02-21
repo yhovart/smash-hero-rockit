@@ -20,6 +20,7 @@ func _refresh_joypad_mapping() -> void:
 	var connected := Input.get_connected_joypads()
 	if connected.is_empty():
 		print("No joypads detected by Godot. If this is a TV remote, it may be exposing keyboard events instead.")
+		_print_wsl_input_hint()
 		_print_snap_joystick_hint()
 		return
 
@@ -44,6 +45,14 @@ func _print_snap_joystick_hint() -> void:
 	print("Snap build detected. If your remote is not detected, run:")
 	print("  sudo snap connect godot4:joystick")
 	print("  sudo snap connect godot4:hardware-observe")
+
+
+func _print_wsl_input_hint() -> void:
+	var release := OS.get_environment("WSL_DISTRO_NAME")
+	if release.is_empty():
+		return
+	print("WSL detected. /dev/input is typically unavailable, so joypads/remotes may not be visible to Linux apps.")
+	print("Use native Windows Godot for controller input, or pass through a USB receiver with usbipd.")
 
 
 func _assign_actions_to_device(actions: Array[String], device: int) -> void:
