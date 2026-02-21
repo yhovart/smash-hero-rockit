@@ -31,6 +31,7 @@ var is_round_result_active := false
 var is_match_over := false
 var round_result_input_delay := 0.0
 var selected_arena_index := 0
+var menu_asset_lookup: Dictionary = {}
 
 @onready var player_1: Node = $Player1
 @onready var player_2: Node = $Player2
@@ -51,6 +52,8 @@ var selected_arena_index := 0
 @onready var p2_choice: Label = $CharacterSelect/MenuPanel/P2Choice
 @onready var p1_swatch: ColorRect = $CharacterSelect/MenuPanel/P1Swatch
 @onready var p2_swatch: ColorRect = $CharacterSelect/MenuPanel/P2Swatch
+@onready var p1_face_preview: TextureRect = $CharacterSelect/MenuPanel/P1Swatch/Face
+@onready var p2_face_preview: TextureRect = $CharacterSelect/MenuPanel/P2Swatch/Face
 @onready var p1_controls: Label = $CharacterSelect/MenuPanel/P1Controls
 @onready var p2_controls: Label = $CharacterSelect/MenuPanel/P2Controls
 @onready var p1_arena_label: Label = $CharacterSelect/MenuPanel/P1Arena
@@ -81,6 +84,7 @@ func _ready() -> void:
 		player_1.connect("died", Callable(self, "_on_player_1_died"))
 	if player_2.has_signal("died"):
 		player_2.connect("died", Callable(self, "_on_player_2_died"))
+	_build_menu_asset_lookup()
 	end_screen.visible = false
 	_initialize_character_select()
 	_ensure_remote_fallback_bindings()
@@ -127,6 +131,10 @@ func _set_gameplay_enabled(enabled: bool) -> void:
 
 
 func _handle_character_select_input() -> void:
+	if Input.is_action_just_pressed("ui_cancel"):
+		get_tree().quit()
+		return
+
 	if is_arena_select_active:
 		_handle_arena_select_input()
 		return
@@ -357,7 +365,7 @@ func _update_character_select_ui() -> void:
 		p1_controls.text = "Prev/Next Arena: A / D\nConfirm Arena: E or W\nBack: Shift"
 		p2_controls.text = "Prev/Next Arena: J / L\nConfirm Arena: K or I\nBack: O"
 		arena_hint.text = "Both players can change the same arena value"
-		menu_hint.text = "Confirm: Attack/Jump • Back: Vapor"
+		menu_hint.text = "Confirm: Attack/Jump • Back: Vapor • Quit: Esc"
 		arena_preview_title.visible = true
 		arena_preview_text.visible = true
 		arena_preview_thumb.visible = true
@@ -365,21 +373,74 @@ func _update_character_select_ui() -> void:
 		return
 
 	character_title.text = "Character Select"
-	p1_choice.text = "P1  %s  %s" % [CHARACTER_NAMES[p1_character_index], "LOCKED" if p1_locked else "READY?"]
-	p2_choice.text = "%s  %s  P2" % ["LOCKED" if p2_locked else "READY?", CHARACTER_NAMES[p2_character_index]]
+	var p1_name := _fit_menu_name(CHARACTER_NAMES[p1_character_index], 10)
+	var p2_name := _fit_menu_name(CHARACTER_NAMES[p2_character_index], 10)
+	p1_choice.text = "P1  %s  %s" % [p1_name, "LOCKED" if p1_locked else "READY?"]
+	p2_choice.text = "%s  %s  P2" % ["LOCKED" if p2_locked else "READY?", p2_name]
 	p1_swatch.visible = true
 	p2_swatch.visible = true
-	p1_swatch.color = CHARACTER_COLORS[p1_character_index]
-	p2_swatch.color = CHARACTER_COLORS[p2_character_index]
+	p1_swatch.color = Color(0.08, 0.1, 0.12, 0.95)
+	p2_swatch.color = Color(0.08, 0.1, 0.12, 0.95)
+	p1_face_preview.texture = _get_menu_character_texture(p1_character_index, "attack" if p1_locked else "face")
+	p2_face_preview.texture = _get_menu_character_texture(p2_character_index, "attack" if p2_locked else "face")
+	p1_face_preview.visible = p1_face_preview.texture != null
+	p2_face_preview.visible = p2_face_preview.texture != null
 	p1_arena_label.text = "Arena: %s" % ARENA_NAMES[arena_select_index]
 	p2_arena_label.text = "Arena: %s" % ARENA_NAMES[arena_select_index]
 	p1_controls.text = "Prev/Next Character: A / D\nLock Character: E or W\nUnlock: W"
 	p2_controls.text = "Prev/Next Character: J / L\nLock Character: K or I\nUnlock: I"
 	arena_hint.text = "After both characters lock, arena selection opens with preview"
-	menu_hint.text = "Confirm: Attack/Jump • Unlock: Jump"
+	menu_hint.text = "Confirm: Attack/Jump • Unlock: Jump • Quit: Esc"
 	arena_preview_title.visible = false
 	arena_preview_text.visible = false
 	arena_preview_thumb.visible = false
+
+
+func _build_menu_asset_lookup() -> void:
+	menu_asset_lookup.clear()
+	var dir := DirAccess.open("res://assets")
+	if dir == null:
+		return
+	for file_name in dir.get_files():
+		var ext := file_name.get_extension().to_lower()
+		if ext not in ["png", "jpg", "jpeg", "webp"]:
+			continue
+		var normalized := _normalize_asset_name(file_name.get_basename())
+		menu_asset_lookup[normalized] = "res://assets/%s" % file_name
+
+
+func _get_menu_character_texture(character_index: int, expression: String) -> Texture2D:
+	var prefix := CHARACTER_ASSET_PREFIXES[character_index]
+	for state in [expression, "face"]:
+		var key := _normalize_asset_name("%s_%s" % [prefix, state])
+		var path: String = menu_asset_lookup.get(key, "")
+		if not path.is_empty():
+			var texture := _try_load_menu_texture(path)
+			if texture != null:
+				return texture
+	return null
+
+
+func _try_load_menu_texture(path: String) -> Texture2D:
+	if not FileAccess.file_exists(path):
+		return null
+	var image := Image.new()
+	if image.load(path) != OK:
+		return null
+	var texture := ImageTexture.create_from_image(image)
+	if texture != null:
+		return texture
+	return null
+
+
+func _fit_menu_name(display_name: String, max_len: int) -> String:
+	if display_name.length() <= max_len:
+		return display_name
+	return display_name.substr(0, max_len - 1) + "…"
+
+
+func _normalize_asset_name(asset_name: String) -> String:
+	return asset_name.to_lower().replace("-", "_")
 
 
 func _update_arena_preview_ui() -> void:
