@@ -5,8 +5,10 @@ enum HazardType { ROCK, FIREBALL, ICICLE }
 var hazard_type: HazardType = HazardType.ROCK
 var fall_speed := 250.0
 var hit_done := false
+var arm_frames := 0
 
 func _ready() -> void:
+	monitoring = false
 	match hazard_type:
 		HazardType.ROCK:
 			fall_speed = randf_range(200.0, 300.0)
@@ -34,6 +36,9 @@ func _ready() -> void:
 			])
 
 func _physics_process(delta: float) -> void:
+	arm_frames += 1
+	if arm_frames == 3 and not monitoring:
+		monitoring = true
 	position.y += fall_speed * delta
 	if hazard_type == HazardType.FIREBALL:
 		$Visual.rotation += 5.0 * delta

@@ -177,7 +177,10 @@ func _fire_projectile() -> void:
 	proj.direction = facing
 	proj.owner_node = self
 	proj.global_position = global_position + Vector2(facing * 20.0, 0)
-	proj.modulate = body_color.lightened(0.3)
+	var c := body_color.lightened(0.3)
+	proj.get_node("Visual").color = Color(c.r, c.g, c.b, 0.9)
+	proj.get_node("Trail").color = Color(c.r, c.g, c.b, 0.4)
+	proj.get_node("Particles").color = Color(c.r, c.g, c.b, 0.6)
 	get_parent().add_child(proj)
 
 func _normal_physics(delta: float) -> void:
@@ -268,7 +271,9 @@ func take_hit(_damage: int, knockback_dir: float) -> void:
 func _on_attack_hitbox_area_entered(area: Area2D) -> void:
 	if area.has_method("reflect") and area.owner_node != self:
 		area.reflect(self)
-		area.modulate = body_color.lightened(0.3)
+		var c := body_color.lightened(0.3)
+		area.get_node("Visual").color = Color(c.r, c.g, c.b, 0.9)
+		area.get_node("Trail").color = Color(c.r, c.g, c.b, 0.4)
 
 func _on_attack_hitbox_body_entered(other: Node2D) -> void:
 	if other == self or not other.is_in_group("player"):
