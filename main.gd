@@ -26,6 +26,10 @@ var p2_locked := false
 @onready var character_title: Label = $CharacterSelect/MenuPanel/Title
 @onready var p1_choice: Label = $CharacterSelect/MenuPanel/P1Choice
 @onready var p2_choice: Label = $CharacterSelect/MenuPanel/P2Choice
+@onready var p1_swatch: ColorRect = $CharacterSelect/MenuPanel/P1Swatch
+@onready var p2_swatch: ColorRect = $CharacterSelect/MenuPanel/P2Swatch
+@onready var p1_controls: Label = $CharacterSelect/MenuPanel/P1Controls
+@onready var p2_controls: Label = $CharacterSelect/MenuPanel/P2Controls
 @onready var menu_hint: Label = $CharacterSelect/MenuPanel/Hint
 
 
@@ -117,9 +121,13 @@ func _apply_character_to_player(player_node: Node, character_index: int) -> void
 
 func _update_character_select_ui() -> void:
 	character_title.text = "Character Select"
-	p1_choice.text = "P1: %s %s" % [CHARACTER_NAMES[p1_character_index], "✓" if p1_locked else ""]
-	p2_choice.text = "P2: %s %s" % [CHARACTER_NAMES[p2_character_index], "✓" if p2_locked else ""]
-	menu_hint.text = "Move: Left/Right   Confirm: Attack or Jump   Change: Puddle"
+	p1_choice.text = "P1  %s  %s" % [CHARACTER_NAMES[p1_character_index], "LOCKED" if p1_locked else "READY?"]
+	p2_choice.text = "%s  %s  P2" % ["LOCKED" if p2_locked else "READY?", CHARACTER_NAMES[p2_character_index]]
+	p1_swatch.color = CHARACTER_COLORS[p1_character_index]
+	p2_swatch.color = CHARACTER_COLORS[p2_character_index]
+	p1_controls.text = "Move: A / D\nJump: W\nAttack: E\nVapor: Shift\nPuddle: F"
+	p2_controls.text = "Move: J / L\nJump: I\nAttack: K\nVapor: O\nPuddle: ;"
+	menu_hint.text = "Each side picks separately • Confirm: Attack/Jump • Unlock: Puddle"
 
 
 func _on_joy_connection_changed(_device: int, _connected: bool) -> void:
