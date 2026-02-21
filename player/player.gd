@@ -289,10 +289,8 @@ func _exit_form() -> void:
 	if drop_through_timer > 0.0:
 		drop_through_timer = 0.0
 		set_collision_mask_value(1, true)
-	body.visible = true
-	body.modulate = Color(1.0, 1.0, 1.0, 1.0)
-	shine.visible = true
-	shine.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	body.visible = false
+	shine.visible = false
 	avatar.visible = true
 	avatar.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	vapor_particles.emitting = false
@@ -318,8 +316,12 @@ func take_hit(_damage: int, knockback_dir: float) -> void:
 		_reset_to_spawn()
 
 func _on_attack_hitbox_area_entered(area: Area2D) -> void:
-	if area.has_method("reflect") and area.owner_node != self:
-		area.reflect(self)
+	if not area.has_method("reflect"):
+		return
+	if "owner_node" in area and area.owner_node == self:
+		return
+	area.reflect(self)
+	if area.has_node("Trail"):
 		var c := body_color.lightened(0.3)
 		area.get_node("Visual").color = Color(c.r, c.g, c.b, 0.9)
 		area.get_node("Trail").color = Color(c.r, c.g, c.b, 0.4)
