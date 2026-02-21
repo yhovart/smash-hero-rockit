@@ -22,7 +22,7 @@ const PLAYER_LABEL_COLORS: Array[Color] = [
 	Color(0.5, 1.0, 0.6, 1.0),
 	Color(1.0, 0.85, 0.4, 1.0),
 ]
-const ARENA_NAMES: Array[String] = ["Classic", "Sky Bridge", "Pitfall"]
+const ARENA_NAMES: Array[String] = ["Forest", "Beach", "Volcano"]
 const ARENA_BG_SCENES: Array[String] = [
 	"res://background/forest_background.tscn",
 	"res://background/beach_background.tscn",
@@ -160,6 +160,7 @@ var _arena_title: Label
 var _arena_cards: Array[ColorRect] = []
 var _arena_card_labels: Array[Label] = []
 var _arena_card_bg_holders: Array[Node2D] = []
+var _arena_card_glows: Array[ColorRect] = []
 var _arena_hint: Label
 
 # ─── Ready ─────────────────────────────────────────────────────────────────────
@@ -596,6 +597,7 @@ func _build_arena_screen() -> void:
 	_arena_cards.clear()
 	_arena_card_labels.clear()
 	_arena_card_bg_holders.clear()
+	_arena_card_glows.clear()
 
 	var card_w := 300.0
 	var card_h := 280.0
@@ -631,6 +633,15 @@ func _build_arena_screen() -> void:
 		bg_holder.scale = Vector2(card_w / VIEWPORT_W, (card_h - 50) / VIEWPORT_H)
 		_arena_layer.add_child(bg_holder)
 		_arena_card_bg_holders.append(bg_holder)
+
+		var thumb_glow := ColorRect.new()
+		thumb_glow.offset_left = card.offset_left
+		thumb_glow.offset_top = card_y + 45
+		thumb_glow.offset_right = card.offset_right
+		thumb_glow.offset_bottom = card_y + card_h
+		thumb_glow.color = Color(1.0, 1.0, 0.7, 0.0)
+		_arena_layer.add_child(thumb_glow)
+		_arena_card_glows.append(thumb_glow)
 
 		# Platform indicators
 		_add_arena_card_platforms(i, card.offset_left, card_y + 45, card_w, card_h - 50)
@@ -701,9 +712,13 @@ func _update_arena_ui() -> void:
 		if i == arena_cursor:
 			_arena_cards[i].color = Color(0.2, 0.35, 0.65, 0.95)
 			_arena_card_labels[i].add_theme_color_override("font_color", Color(1.0, 1.0, 0.7))
+			_arena_card_bg_holders[i].modulate = Color(1.0, 1.0, 1.0, 1.0)
+			_arena_card_glows[i].color = Color(1.0, 1.0, 0.7, 0.18)
 		else:
 			_arena_cards[i].color = Color(0.12, 0.14, 0.18, 0.95)
 			_arena_card_labels[i].add_theme_color_override("font_color", Color(0.6, 0.65, 0.7))
+			_arena_card_bg_holders[i].modulate = Color(0.72, 0.72, 0.78, 0.95)
+			_arena_card_glows[i].color = Color(1.0, 1.0, 0.7, 0.0)
 
 
 func _handle_arena_input() -> void:
