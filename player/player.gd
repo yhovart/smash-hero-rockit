@@ -24,7 +24,6 @@ const STOMP_BOUNCE = -350.0
 const DASH_SPEED = 600.0
 const DASH_DURATION = 0.15
 const DASH_COOLDOWN = 0.5
-const MAX_HITS = 3
 const MAX_STOCKS = 10
 const HIT_INVINCIBILITY = 0.5
 
@@ -43,7 +42,6 @@ var projectile_scene: PackedScene = preload("res://player/water_projectile.tscn"
 
 var form: Form = Form.WATER
 var form_timer := 0.0
-var hits_taken := 0
 var invincible_timer := 0.0
 var is_attacking := false
 var attack_timer := 0.0
@@ -69,6 +67,7 @@ var dash_cooldown_timer := 0.0
 const VISUAL_STATES := ["face", "left", "right", "attack", "dolor", "victory", "defeat"]
 var visual_textures: Dictionary = {}
 
+@warning_ignore("unused_signal")
 signal hit_changed(hits: int)
 signal died
 signal stock_changed(stocks: int)
@@ -96,7 +95,6 @@ func _ready() -> void:
 	body.visible = not has_avatar
 	shine.visible = not has_avatar
 	_update_avatar_texture("face")
-	hit_changed.emit.call_deferred(hits_taken)
 	stock_changed.emit.call_deferred(stocks)
 
 
@@ -118,10 +116,8 @@ func apply_character_profile(new_color: Color, new_asset_prefix: String) -> void
 
 func reset_for_round() -> void:
 	stocks = MAX_STOCKS
-	hits_taken = 0
 	visible = true
 	set_physics_process(true)
-	hit_changed.emit(hits_taken)
 	stock_changed.emit(stocks)
 	_reset_to_spawn()
 
@@ -193,8 +189,6 @@ func _lose_stock() -> void:
 	stocks -= 1
 	stock_changed.emit(stocks)
 	died.emit()
-	hits_taken = 0
-	hit_changed.emit(hits_taken)
 	if stocks <= 0:
 		eliminated.emit()
 		set_physics_process(false)
@@ -442,16 +436,17 @@ func _check_stomp() -> void:
 func take_hit(_damage: int, knockback_dir: float) -> void:
 	if invincible_timer > 0.0 or form == Form.VAPOR:
 		return
-	hits_taken += 1
-	var will_lose_stock := hits_taken >= MAX_HITS
-	var next_stocks := stocks - 1 if will_lose_stock else stocks
-	got_hit.emit(next_stocks, will_lose_stock)
+	var next_stocks := stocks - 1
+	got_hit.emit(next_stocks, true)
 	invincible_timer = HIT_INVINCIBILITY
 	velocity.x = knockback_dir * ATTACK_KNOCKBACK
 	velocity.y = -200.0
-	hit_changed.emit(hits_taken)
-	if hits_taken >= MAX_HITS:
-		_lose_stock()
+	stocks -= 1
+	stock_changed.emit(stocks)
+	if stocks <= 0:
+		eliminated.emit()
+		set_physics_process(false)
+		visible = false
 
 func _on_attack_hitbox_area_entered(area: Area2D) -> void:
 	if not area.has_method("reflect"):
