@@ -3,10 +3,10 @@ extends Node2D
 # ─── Constants ─────────────────────────────────────────────────────────────────
 
 const PLAYER_ACTION_SETS: Array = [
-	["p1_left", "p1_right", "p1_jump", "p1_attack", "p1_vapor", "p1_puddle"],
-	["p2_left", "p2_right", "p2_jump", "p2_attack", "p2_vapor", "p2_puddle"],
-	["p3_left", "p3_right", "p3_jump", "p3_attack", "p3_vapor", "p3_puddle"],
-	["p4_left", "p4_right", "p4_jump", "p4_attack", "p4_vapor", "p4_puddle"],
+	["p1_left", "p1_right", "p1_jump", "p1_attack", "p1_vapor", "p1_puddle", "p1_dash"],
+	["p2_left", "p2_right", "p2_jump", "p2_attack", "p2_vapor", "p2_puddle", "p2_dash"],
+	["p3_left", "p3_right", "p3_jump", "p3_attack", "p3_vapor", "p3_puddle", "p3_dash"],
+	["p4_left", "p4_right", "p4_jump", "p4_attack", "p4_vapor", "p4_puddle", "p4_dash"],
 ]
 const CHARACTER_NAMES: Array[String] = ["Franck", "Yves-Henri", "Joel", "Maite"]
 const CHARACTER_ASSET_PREFIXES: Array[String] = ["franck", "Yves-Henri", "Joel", "Maite"]
@@ -62,16 +62,16 @@ const SPAWN_POSITIONS: Dictionary = {
 }
 const VIEWPORT_W := 1152.0
 const VIEWPORT_H := 648.0
-const P1_ACTIONS: Array[String] = ["p1_left", "p1_right", "p1_jump", "p1_attack", "p1_vapor", "p1_puddle"]
-const P2_ACTIONS: Array[String] = ["p2_left", "p2_right", "p2_jump", "p2_attack", "p2_vapor", "p2_puddle"]
-const P3_ACTIONS: Array[String] = ["p3_left", "p3_right", "p3_jump", "p3_attack", "p3_vapor", "p3_puddle"]
-const P4_ACTIONS: Array[String] = ["p4_left", "p4_right", "p4_jump", "p4_attack", "p4_vapor", "p4_puddle"]
+const P1_ACTIONS: Array[String] = ["p1_left", "p1_right", "p1_jump", "p1_attack", "p1_vapor", "p1_puddle", "p1_dash"]
+const P2_ACTIONS: Array[String] = ["p2_left", "p2_right", "p2_jump", "p2_attack", "p2_vapor", "p2_puddle", "p2_dash"]
+const P3_ACTIONS: Array[String] = ["p3_left", "p3_right", "p3_jump", "p3_attack", "p3_vapor", "p3_puddle", "p3_dash"]
+const P4_ACTIONS: Array[String] = ["p4_left", "p4_right", "p4_jump", "p4_attack", "p4_vapor", "p4_puddle", "p4_dash"]
 const ALL_ACTION_SETS: Array = [P1_ACTIONS, P2_ACTIONS, P3_ACTIONS, P4_ACTIONS]
 
 const PLAYER_CONTROLS_TEXT: Array[String] = [
-	"Move: A / D\nJump: W\nAttack: E\nVapor: Q  Puddle: S",
-	"Move: J / L\nJump: I\nAttack: O\nVapor: U  Puddle: K",
-	"Move: Num4 / Num6\nJump: Num8\nAttack: Num5\nVapor: Num7  Puddle: Num2",
+	"Move: A / D\nJump: W\nAttack: E\nDash: R\nVapor: Q  Puddle: S",
+	"Move: J / L\nJump: I\nAttack: O\nDash: H\nVapor: U  Puddle: K",
+	"Move: Num4 / Num6\nJump: Num8\nAttack: Num5\nDash: Num9\nVapor: Num7  Puddle: Num2",
 	"Gamepad only\n(Device 4)",
 ]
 
@@ -226,7 +226,7 @@ func _show_phase(phase: MenuPhase) -> void:
 # ─── Input Registration (P3/P4) ───────────────────────────────────────────────
 
 func _register_extra_actions() -> void:
-	for suffix in ["left", "right", "jump", "attack", "vapor", "puddle"]:
+	for suffix in ["left", "right", "jump", "attack", "vapor", "puddle", "dash"]:
 		for prefix in ["p3", "p4"]:
 			var action_name := "%s_%s" % [prefix, suffix]
 			if not InputMap.has_action(action_name):
@@ -238,6 +238,7 @@ func _register_extra_actions() -> void:
 	_bind_key_to_action("p3_attack", KEY_KP_5)
 	_bind_key_to_action("p3_vapor", KEY_KP_7)
 	_bind_key_to_action("p3_puddle", KEY_KP_2)
+	_bind_key_to_action("p3_dash", KEY_KP_9)
 	# P4: no keyboard by default (gamepad only)
 
 
@@ -1111,6 +1112,7 @@ const JOY_BINDINGS: Dictionary = {
 	"attack": {"buttons": [JOY_BUTTON_X],          "axes": []},
 	"vapor":  {"buttons": [JOY_BUTTON_Y],          "axes": []},
 	"puddle": {"buttons": [JOY_BUTTON_B],          "axes": []},
+	"dash":   {"buttons": [JOY_BUTTON_RIGHT_SHOULDER], "axes": []},
 }
 
 
@@ -1169,6 +1171,7 @@ func _ensure_remote_fallback_bindings() -> void:
 		_bind_joy_button_if_missing("%s_attack" % prefix, JOY_BUTTON_X, p_idx)
 		_bind_joy_button_if_missing("%s_vapor" % prefix, JOY_BUTTON_Y, p_idx)
 		_bind_joy_button_if_missing("%s_puddle" % prefix, JOY_BUTTON_B, p_idx)
+		_bind_joy_button_if_missing("%s_dash" % prefix, JOY_BUTTON_RIGHT_SHOULDER, p_idx)
 		_bind_joy_motion_if_missing("%s_left" % prefix, JOY_AXIS_LEFT_X, -1.0, p_idx)
 		_bind_joy_motion_if_missing("%s_right" % prefix, JOY_AXIS_LEFT_X, 1.0, p_idx)
 

@@ -22,6 +22,9 @@ const PUDDLE_MAX_TIME = 3.0
 const FORM_COOLDOWN = 2.0
 const ATTACK_KNOCKBACK = 800.0
 const STOMP_BOUNCE = -350.0
+const DASH_SPEED = 600.0
+const DASH_DURATION = 0.15
+const DASH_COOLDOWN = 0.5
 const MAX_HITS = 3
 const MAX_STOCKS = 3
 const HIT_INVINCIBILITY = 0.5
@@ -32,6 +35,7 @@ const HIT_INVINCIBILITY = 0.5
 @export var action_attack := "p1_attack"
 @export var action_vapor := "p1_vapor"
 @export var action_puddle := "p1_puddle"
+@export var action_dash := "p1_dash"
 @export var body_color := Color(0.15, 0.45, 0.95, 1.0)
 @export var spawn_position := Vector2(300, 500)
 @export var asset_prefix := "franck"
@@ -60,6 +64,9 @@ var jump_buffer_timer := 0.0
 var was_on_floor := false
 var has_double_jump := true
 var is_fast_falling := false
+var is_dashing := false
+var dash_timer := 0.0
+var dash_cooldown_timer := 0.0
 const VISUAL_STATES := ["face", "left", "right", "attack", "dolor", "victory", "defeat"]
 var visual_textures: Dictionary = {}
 
@@ -123,6 +130,7 @@ func _physics_process(delta: float) -> void:
 	cooldown_timer = max(cooldown_timer - delta, 0.0)
 	invincible_timer = max(invincible_timer - delta, 0.0)
 	projectile_cooldown_timer = max(projectile_cooldown_timer - delta, 0.0)
+	dash_cooldown_timer = max(dash_cooldown_timer - delta, 0.0)
 
 	if drop_through_timer > 0.0:
 		drop_through_timer -= delta
@@ -135,6 +143,7 @@ func _physics_process(delta: float) -> void:
 		avatar.modulate.a = 1.0
 
 	_handle_attack(delta)
+	_handle_dash(delta)
 	_handle_form_switch(delta)
 
 	if form != Form.WATER:
@@ -188,10 +197,29 @@ func _reset_to_spawn() -> void:
 	jump_buffer_timer = 0.0
 	has_double_jump = true
 	is_fast_falling = false
+	is_dashing = false
+	dash_timer = 0.0
+	dash_cooldown_timer = 0.0
 	set_collision_mask_value(1, true)
 	invincible_timer = HIT_INVINCIBILITY
 	global_position = spawn_position
 	velocity = Vector2.ZERO
+
+func _handle_dash(delta: float) -> void:
+	if is_dashing:
+		dash_timer -= delta
+		if dash_timer <= 0.0:
+			is_dashing = false
+		return
+	if form == Form.WATER and dash_cooldown_timer <= 0.0 and Input.is_action_just_pressed(action_dash):
+		is_dashing = true
+		dash_timer = DASH_DURATION
+		dash_cooldown_timer = DASH_COOLDOWN
+		var dir := Input.get_axis(action_left, action_right)
+		if dir != 0.0:
+			facing = sign(dir)
+		velocity.x = facing * DASH_SPEED
+		velocity.y = 0.0
 
 func _handle_form_switch(delta: float) -> void:
 	if puddle_buffer > 0.0:
@@ -274,6 +302,9 @@ func _fire_projectile() -> void:
 	get_parent().add_child(proj)
 
 func _normal_physics(delta: float) -> void:
+	if is_dashing:
+		return
+
 	var on_floor := is_on_floor()
 
 	if on_floor:
