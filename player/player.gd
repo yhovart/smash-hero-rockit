@@ -197,7 +197,7 @@ func _handle_attack(delta: float) -> void:
 
 func _melee_attack() -> void:
 	is_attacking = true
-	attack_timer = 0.25
+	attack_timer = 0.35
 	attack_hitbox.monitoring = true
 	attack_hitbox.position.x = facing * 20.0
 	$AttackVisual.visible = true
@@ -278,8 +278,8 @@ func _enter_puddle() -> void:
 	avatar.visible = false
 	puddle_body.visible = true
 	puddle_hitbox.monitoring = true
-	collision_shape.position = Vector2(0, 14)
-	collision_shape.shape.radius = 6.0
+	collision_shape.position = Vector2(0, 17)
+	collision_shape.shape.radius = 4.0
 	scale = Vector2(1.0, 1.0)
 
 func _exit_form() -> void:

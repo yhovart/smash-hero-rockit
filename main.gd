@@ -285,12 +285,15 @@ func _refresh_joypad_mapping() -> void:
 	print("Connected joypads -> ", ", ".join(names))
 
 	var p1_device: int = connected[0]
-	var p2_device: int = connected[1] if connected.size() > 1 else connected[0]
-
 	_assign_actions_to_device(P1_ACTIONS, p1_device)
-	_assign_actions_to_device(P2_ACTIONS, p2_device)
 
-	print("Mapped P1 to device %d, P2 to device %d" % [p1_device, p2_device])
+	if connected.size() > 1:
+		var p2_device: int = connected[1]
+		_assign_actions_to_device(P2_ACTIONS, p2_device)
+		print("Mapped P1 to device %d, P2 to device %d" % [p1_device, p2_device])
+	else:
+		_strip_joypad_events(P2_ACTIONS)
+		print("Mapped P1 to device %d, P2 keyboard only (single gamepad)" % p1_device)
 
 
 func _print_snap_joystick_hint() -> void:
@@ -328,6 +331,15 @@ func _assign_actions_to_device(actions: Array[String], device: int) -> void:
 			InputMap.action_add_event(action, input_event)
 
 
+func _strip_joypad_events(actions: Array[String]) -> void:
+	for action in actions:
+		var events := InputMap.action_get_events(action)
+		InputMap.action_erase_events(action)
+		for event in events:
+			if not (event is InputEventJoypadButton or event is InputEventJoypadMotion):
+				InputMap.action_add_event(action, event)
+
+
 func _ensure_remote_fallback_bindings() -> void:
 	_bind_key_if_missing("p1_left", KEY_LEFT)
 	_bind_key_if_missing("p1_right", KEY_RIGHT)
@@ -338,14 +350,14 @@ func _ensure_remote_fallback_bindings() -> void:
 	_bind_key_if_missing("p1_vapor", KEY_BACKSPACE)
 	_bind_key_if_missing("p1_puddle", KEY_DOWN)
 
-	_bind_joy_button_if_missing("p1_left", JOY_BUTTON_DPAD_LEFT, -1)
-	_bind_joy_button_if_missing("p1_right", JOY_BUTTON_DPAD_RIGHT, -1)
-	_bind_joy_button_if_missing("p1_jump", JOY_BUTTON_A, -1)
-	_bind_joy_button_if_missing("p1_attack", JOY_BUTTON_X, -1)
-	_bind_joy_button_if_missing("p1_vapor", JOY_BUTTON_Y, -1)
-	_bind_joy_button_if_missing("p1_puddle", JOY_BUTTON_B, -1)
-	_bind_joy_motion_if_missing("p1_left", JOY_AXIS_LEFT_X, -1.0, -1)
-	_bind_joy_motion_if_missing("p1_right", JOY_AXIS_LEFT_X, 1.0, -1)
+	_bind_joy_button_if_missing("p1_left", JOY_BUTTON_DPAD_LEFT, 0)
+	_bind_joy_button_if_missing("p1_right", JOY_BUTTON_DPAD_RIGHT, 0)
+	_bind_joy_button_if_missing("p1_jump", JOY_BUTTON_A, 0)
+	_bind_joy_button_if_missing("p1_attack", JOY_BUTTON_X, 0)
+	_bind_joy_button_if_missing("p1_vapor", JOY_BUTTON_Y, 0)
+	_bind_joy_button_if_missing("p1_puddle", JOY_BUTTON_B, 0)
+	_bind_joy_motion_if_missing("p1_left", JOY_AXIS_LEFT_X, -1.0, 0)
+	_bind_joy_motion_if_missing("p1_right", JOY_AXIS_LEFT_X, 1.0, 0)
 
 
 func _bind_key_if_missing(action: String, keycode: Key) -> void:
