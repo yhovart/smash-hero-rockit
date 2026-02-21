@@ -126,6 +126,7 @@ var _current_bg: Node = null
 var _arena_preview_bgs: Array = [null, null, null]
 var previous_stocks: Array[int] = [PLAYER_MAX_STOCKS, PLAYER_MAX_STOCKS, PLAYER_MAX_STOCKS, PLAYER_MAX_STOCKS]
 var eliminated_players: Array[bool] = [false, false, false, false]
+var elimination_order: Array[int] = []
 
 var chevre_player: AudioStreamPlayer
 var wilhelm_player: AudioStreamPlayer
@@ -165,6 +166,7 @@ var jump_player: AudioStreamPlayer
 @onready var bg_container: Node2D = $BackgroundContainer
 @onready var _old_char_select: CanvasLayer = $CharacterSelect
 @onready var end_screen: CanvasLayer = $EndScreen
+@onready var end_panel: Panel = $EndScreen/Panel
 @onready var end_backdrop: ColorRect = $EndScreen/Backdrop
 @onready var end_title: Label = $EndScreen/Panel/Title
 @onready var end_subtitle: Label = $EndScreen/Panel/SubTitle
@@ -175,6 +177,7 @@ var jump_player: AudioStreamPlayer
 @onready var end_score: Label = $EndScreen/Panel/Score
 @onready var end_arena: Label = $EndScreen/Panel/Arena
 @onready var end_hint: Label = $EndScreen/Panel/Hint
+var _end_loser_extra_nodes: Array[Node] = []
 
 # ─── Programmatic UI ───────────────────────────────────────────────────────────
 
@@ -846,6 +849,7 @@ func _start_game() -> void:
 	hud.visible = true
 	hud.configure_for_players(num_players)
 	_apply_keyboard_layout_for_player_count()
+	elimination_order.clear()
 
 	# Reset stocks tracking
 	for i in 4:
@@ -888,6 +892,8 @@ func _handle_in_fight_input() -> void:
 func _on_player_eliminated(player_index: int) -> void:
 	if menu_phase != MenuPhase.NONE or is_result_active:
 		return
+	if not elimination_order.has(player_index):
+		elimination_order.append(player_index)
 	eliminated_players[player_index] = true
 
 	var alive: Array[int] = []
@@ -969,29 +975,108 @@ func _show_end_screen(title: String, subtitle: String, tint: Color, score_text: 
 
 
 func _update_end_screen_faces(winner_index: int) -> void:
+	_clear_end_loser_thumbnails()
 	var winner_node: Node = all_players[winner_index]
 
 	winner_tag.text = "WINNER P%d" % (winner_index + 1)
 	winner_face.texture = _get_player_expression_texture(winner_node, "victory")
 	winner_face.visible = winner_face.texture != null
 
-	# Find first loser (not the winner)
-	var loser_index := -1
+	var loser_indices: Array[int] = []
 	for i in num_players:
 		if i != winner_index:
-			loser_index = i
+			loser_indices.append(i)
+
+	var loser_index := -1
+	for idx in elimination_order:
+		if idx != winner_index:
+			loser_index = idx
 			break
+	if loser_index < 0 and loser_indices.size() > 0:
+		loser_index = loser_indices[0]
+
 	if loser_index >= 0:
 		var loser_node: Node = all_players[loser_index]
-		loser_tag.text = "LOSER P%d" % (loser_index + 1)
+		loser_tag.text = "BIGGEST LOSER P%d" % (loser_index + 1) if num_players > 2 else "LOSER P%d" % (loser_index + 1)
 		loser_face.texture = _get_player_expression_texture(loser_node, "defeat")
 		if loser_face.texture == null:
 			loser_face.texture = _get_player_expression_texture(loser_node, "face")
 		loser_face.visible = loser_face.texture != null
 		loser_tag.visible = true
+
+		if num_players > 2:
+			var loser_names: Array[String] = []
+			for idx in loser_indices:
+				loser_names.append("P%d" % (idx + 1))
+			end_score.text = "Losers: %s" % " • ".join(loser_names)
+			_update_end_loser_thumbnails(loser_indices, loser_index)
+		else:
+			end_score.text = ""
 	else:
 		loser_face.visible = false
 		loser_tag.visible = false
+		end_score.text = ""
+
+
+func _clear_end_loser_thumbnails() -> void:
+	for node in _end_loser_extra_nodes:
+		if is_instance_valid(node):
+			node.queue_free()
+	_end_loser_extra_nodes.clear()
+
+
+func _update_end_loser_thumbnails(loser_indices: Array[int], biggest_loser_index: int) -> void:
+	if num_players <= 2 or loser_indices.is_empty():
+		return
+
+	var ordered_losers: Array[int] = []
+	if biggest_loser_index >= 0 and loser_indices.has(biggest_loser_index):
+		ordered_losers.append(biggest_loser_index)
+	for idx in elimination_order:
+		if idx != biggest_loser_index and loser_indices.has(idx) and not ordered_losers.has(idx):
+			ordered_losers.append(idx)
+	for idx in loser_indices:
+		if not ordered_losers.has(idx):
+			ordered_losers.append(idx)
+
+	var x := 634.0
+	var y_start := 186.0
+	var y_step := 68.0
+	for i in ordered_losers.size():
+		var idx := ordered_losers[i]
+		var y := y_start + i * y_step
+
+		var frame := ColorRect.new()
+		frame.offset_left = x
+		frame.offset_top = y
+		frame.offset_right = x + 60.0
+		frame.offset_bottom = y + 60.0
+		frame.color = Color(1.0, 0.82, 0.22, 0.92) if idx == biggest_loser_index else Color(0.40, 0.16, 0.16, 0.92)
+		end_panel.add_child(frame)
+		_end_loser_extra_nodes.append(frame)
+
+		var face := TextureRect.new()
+		face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		face.offset_left = x + 2.0
+		face.offset_top = y + 2.0
+		face.offset_right = x + 58.0
+		face.offset_bottom = y + 58.0
+		var loser_node: Node = all_players[idx]
+		face.texture = _get_player_expression_texture(loser_node, "defeat")
+		if face.texture == null:
+			face.texture = _get_player_expression_texture(loser_node, "face")
+		end_panel.add_child(face)
+		_end_loser_extra_nodes.append(face)
+
+		var label := _make_label("P%d" % (idx + 1), 12, Color(1.0, 0.9, 0.9))
+		label.offset_left = x
+		label.offset_top = y + 60.0
+		label.offset_right = x + 60.0
+		label.offset_bottom = y + 76.0
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		end_panel.add_child(label)
+		_end_loser_extra_nodes.append(label)
 
 
 func _get_player_expression_texture(player_node: Node, expression: String) -> Texture2D:
@@ -1192,7 +1277,8 @@ func _build_menu_asset_lookup() -> void:
 		var ext := file_name.get_extension().to_lower()
 		if ext not in ["png", "jpg", "jpeg", "webp"]:
 			continue
-		var normalized := _normalize_asset_name(file_name.get_basename()) menu_asset_lookup[normalized] = "res://assets/%s" % file_name
+		var normalized := _normalize_asset_name(file_name.get_basename())
+		menu_asset_lookup[normalized] = "res://assets/%s" % file_name
 
 
 func _get_menu_character_texture(character_index: int, expression: String) -> Texture2D:
