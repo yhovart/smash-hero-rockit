@@ -21,6 +21,7 @@ const PUDDLE_SPEED = 150.0
 const PUDDLE_MAX_TIME = 3.0
 const FORM_COOLDOWN = 2.0
 const ATTACK_KNOCKBACK = 800.0
+const STOMP_BOUNCE = -350.0
 const MAX_HITS = 3
 const MAX_STOCKS = 3
 const HIT_INVINCIBILITY = 0.5
@@ -152,6 +153,9 @@ func _physics_process(delta: float) -> void:
 	_update_visual_state()
 
 	move_and_slide()
+
+	if is_fast_falling:
+		_check_stomp()
 
 	if global_position.y > 700.0:
 		_fall_death()
@@ -395,6 +399,22 @@ func _exit_form() -> void:
 		collision_shape.position = Vector2(0, 4)
 		collision_shape.shape.radius = 14.0
 
+func _check_stomp() -> void:
+	for i in get_slide_collision_count():
+		var col := get_slide_collision(i)
+		var other := col.get_collider()
+		if other == self or not other.is_in_group("player"):
+			continue
+		# Only stomp if collision normal points upward (we landed on top)
+		if col.get_normal().y < -0.5 and other.has_method("take_hit"):
+			var dir: float = sign(other.global_position.x - global_position.x)
+			if dir == 0.0:
+				dir = facing
+			other.take_hit(1, dir)
+			velocity.y = STOMP_BOUNCE
+			is_fast_falling = false
+			break
+
 func take_hit(_damage: int, knockback_dir: float) -> void:
 	if invincible_timer > 0.0 or form == Form.VAPOR:
 		return
@@ -467,7 +487,7 @@ func _update_visual_state() -> void:
 		return
 	if invincible_timer > 0.0:
 		_update_avatar_texture("dolor")
-	elif is_attacking or is_charging:
+	elif is_attacking or is_charging or is_fast_falling:
 		_update_avatar_texture("attack")
 	elif absf(velocity.x) > 5.0:
 		_update_avatar_texture("right" if facing >= 0.0 else "left")
