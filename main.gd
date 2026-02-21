@@ -577,11 +577,11 @@ func _refresh_joypad_mapping() -> void:
 	print("Connected joypads -> ", ", ".join(names))
 
 	var p1_device: int = connected[0]
-	_assign_actions_to_device(P1_ACTIONS, p1_device)
+	_force_joypad_bindings(P1_ACTIONS, p1_device)
 
 	if connected.size() > 1:
 		var p2_device: int = connected[1]
-		_assign_actions_to_device(P2_ACTIONS, p2_device)
+		_force_joypad_bindings(P2_ACTIONS, p2_device)
 		print("Mapped P1 to device %d, P2 to device %d" % [p1_device, p2_device])
 	else:
 		_strip_joypad_events(P2_ACTIONS)
@@ -605,22 +605,39 @@ func _print_wsl_input_hint() -> void:
 	print("Use native Windows Godot for controller input, or pass through a USB receiver with usbipd.")
 
 
-func _assign_actions_to_device(actions: Array[String], device: int) -> void:
+const JOY_BINDINGS: Dictionary = {
+	"left":   {"buttons": [JOY_BUTTON_DPAD_LEFT],  "axes": [[JOY_AXIS_LEFT_X, -1.0]]},
+	"right":  {"buttons": [JOY_BUTTON_DPAD_RIGHT], "axes": [[JOY_AXIS_LEFT_X, 1.0]]},
+	"jump":   {"buttons": [JOY_BUTTON_A],          "axes": []},
+	"attack": {"buttons": [JOY_BUTTON_X],          "axes": []},
+	"vapor":  {"buttons": [JOY_BUTTON_Y],          "axes": []},
+	"puddle": {"buttons": [JOY_BUTTON_B],          "axes": []},
+}
+
+func _force_joypad_bindings(actions: Array[String], device: int) -> void:
 	for action in actions:
 		var events := InputMap.action_get_events(action)
-		var rebuilt_events: Array[InputEvent] = []
-
-		for event in events:
-			if event is InputEventJoypadButton or event is InputEventJoypadMotion:
-				var new_event := event.duplicate()
-				new_event.device = device
-				rebuilt_events.append(new_event)
-			else:
-				rebuilt_events.append(event)
-
 		InputMap.action_erase_events(action)
-		for input_event in rebuilt_events:
-			InputMap.action_add_event(action, input_event)
+		for event in events:
+			if not (event is InputEventJoypadButton or event is InputEventJoypadMotion):
+				InputMap.action_add_event(action, event)
+
+		var suffix := action.split("_", false)
+		var key := "_".join(suffix.slice(1))
+		if not JOY_BINDINGS.has(key):
+			continue
+		var binding: Dictionary = JOY_BINDINGS[key]
+		for btn in binding["buttons"]:
+			var ev := InputEventJoypadButton.new()
+			ev.button_index = btn
+			ev.device = device
+			InputMap.action_add_event(action, ev)
+		for axis_pair in binding["axes"]:
+			var ev := InputEventJoypadMotion.new()
+			ev.axis = axis_pair[0]
+			ev.axis_value = axis_pair[1]
+			ev.device = device
+			InputMap.action_add_event(action, ev)
 
 
 func _strip_joypad_events(actions: Array[String]) -> void:
