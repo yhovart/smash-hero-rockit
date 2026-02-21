@@ -59,7 +59,7 @@ var jump_buffer_timer := 0.0
 var was_on_floor := false
 var has_double_jump := true
 var is_fast_falling := false
-const VISUAL_STATES := ["face", "left", "right", "attack", "dolor"]
+const VISUAL_STATES := ["face", "left", "right", "attack", "dolor", "victory", "defeat"]
 var visual_textures: Dictionary = {}
 
 signal hit_changed(hits: int)
