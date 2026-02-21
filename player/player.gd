@@ -514,8 +514,6 @@ func _character_prefix_variants(prefix: String) -> Array[String]:
 	return variants
 
 func _load_texture_from_path(path: String) -> Texture2D:
-	var image := Image.new()
-	var err := image.load(path)
-	if err != OK:
+	if not FileAccess.file_exists(path):
 		return null
-	return ImageTexture.create_from_image(image)
+	return load(path) as Texture2D

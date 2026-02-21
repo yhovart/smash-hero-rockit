@@ -1134,12 +1134,9 @@ func _create_sfx_player(stream: AudioStream) -> AudioStreamPlayer:
 
 
 func _load_mp3_stream(path: String) -> AudioStream:
-	var file := FileAccess.open(path, FileAccess.READ)
-	if file == null:
+	if not FileAccess.file_exists(path):
 		return null
-	var stream := AudioStreamMP3.new()
-	stream.data = file.get_buffer(file.get_length())
-	return stream
+	return load(path) as AudioStream
 
 
 func _play_sound(player: AudioStreamPlayer) -> void:
@@ -1306,11 +1303,7 @@ func _character_prefix_variants(prefix: String) -> Array[String]:
 func _try_load_menu_texture(path: String) -> Texture2D:
 	if not FileAccess.file_exists(path):
 		return null
-	var image := Image.new()
-	if image.load(path) != OK:
-		return null
-	var texture := ImageTexture.create_from_image(image)
-	return texture
+	return load(path) as Texture2D
 
 
 func _normalize_asset_name(asset_name: String) -> String:
