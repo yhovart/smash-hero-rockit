@@ -40,6 +40,8 @@ const PROJECTILE_COOLDOWN = 0.8
 var projectile_cooldown_timer := 0.0
 var puddle_buffer := 0.0
 const PUDDLE_BUFFER_TIME = 0.2
+var drop_through_timer := 0.0
+const DROP_THROUGH_TIME = 0.25
 
 signal hit_changed(hits: int)
 signal died
@@ -60,6 +62,11 @@ func _physics_process(delta: float) -> void:
 	cooldown_timer = max(cooldown_timer - delta, 0.0)
 	invincible_timer = max(invincible_timer - delta, 0.0)
 	projectile_cooldown_timer = max(projectile_cooldown_timer - delta, 0.0)
+
+	if drop_through_timer > 0.0:
+		drop_through_timer -= delta
+		if drop_through_timer <= 0.0:
+			set_collision_mask_value(1, true)
 
 	if invincible_timer > 0.0:
 		body.modulate.a = 0.5 if fmod(invincible_timer, 0.15) > 0.075 else 1.0
@@ -99,6 +106,8 @@ func _reset_to_spawn() -> void:
 	is_charging = false
 	$ChargeVisual.visible = false
 	charge_time = 0.0
+	drop_through_timer = 0.0
+	set_collision_mask_value(1, true)
 	invincible_timer = HIT_INVINCIBILITY
 	global_position = spawn_position
 	velocity = Vector2.ZERO
@@ -210,6 +219,19 @@ func _vapor_physics(_delta: float) -> void:
 func _puddle_physics(delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
+
+	if Input.is_action_just_pressed(action_jump) and is_on_floor():
+		var on_platform := false
+		for i in get_slide_collision_count():
+			var col := get_slide_collision(i)
+			if col.get_collider().is_in_group("platform"):
+				on_platform = true
+				break
+		if on_platform:
+			set_collision_mask_value(1, false)
+			drop_through_timer = DROP_THROUGH_TIME
+			velocity.y = 20.0
+
 	var direction := Input.get_axis(action_left, action_right)
 	if direction:
 		velocity.x = direction * PUDDLE_SPEED
@@ -242,6 +264,9 @@ func _exit_form() -> void:
 	var was_puddle := form == Form.PUDDLE
 	form = Form.WATER
 	cooldown_timer = FORM_COOLDOWN
+	if drop_through_timer > 0.0:
+		drop_through_timer = 0.0
+		set_collision_mask_value(1, true)
 	body.visible = true
 	body.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	shine.visible = true

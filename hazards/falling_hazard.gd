@@ -6,6 +6,9 @@ var hazard_type: HazardType = HazardType.ROCK
 var fall_speed := 250.0
 var hit_done := false
 var arm_frames := 0
+var deflected := false
+var horizontal_dir := 0.0
+const HORIZONTAL_SPEED = 350.0
 
 func _ready() -> void:
 	monitoring = false
@@ -39,23 +42,43 @@ func _physics_process(delta: float) -> void:
 	arm_frames += 1
 	if arm_frames == 3 and not monitoring:
 		monitoring = true
-	position.y += fall_speed * delta
-	if hazard_type == HazardType.FIREBALL:
-		$Visual.rotation += 5.0 * delta
+	if deflected:
+		position.x += horizontal_dir * HORIZONTAL_SPEED * delta
+		$Visual.rotation += horizontal_dir * 10.0 * delta
+		if position.x < -50.0 or position.x > 1200.0:
+			queue_free()
+	else:
+		position.y += fall_speed * delta
+		if hazard_type == HazardType.FIREBALL:
+			$Visual.rotation += 5.0 * delta
 	if position.y > 700.0:
 		queue_free()
 
 func _on_body_entered(body_node: Node2D) -> void:
-	if hit_done:
+	if hit_done or deflected:
+		if deflected and body_node.is_in_group("player") and body_node.has_method("take_hit"):
+			hit_done = true
+			body_node.take_hit(1, horizontal_dir)
+			_explode()
 		return
-	if body_node.is_in_group("player") and body_node.has_method("take_hit"):
+	if not body_node.is_in_group("player") or not body_node.has_method("take_hit"):
+		return
+	var dy := global_position.y - body_node.global_position.y
+	if dy < -4.0:
 		hit_done = true
 		var dir: float = sign(body_node.velocity.x) if body_node.velocity.x != 0.0 else 1.0
 		body_node.take_hit(1, dir * 0.3)
 		_explode()
-	elif not body_node.is_in_group("player"):
-		hit_done = true
-		_explode()
+	else:
+		_deflect(body_node)
+
+func _deflect(body_node: Node2D) -> void:
+	deflected = true
+	var push_dir: float = sign(global_position.x - body_node.global_position.x)
+	if push_dir == 0.0:
+		push_dir = 1.0 if randf() > 0.5 else -1.0
+	horizontal_dir = push_dir
+	fall_speed = 0.0
 
 func _explode() -> void:
 	$Visual.visible = false
