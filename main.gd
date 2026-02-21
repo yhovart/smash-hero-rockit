@@ -859,7 +859,7 @@ func _update_end_screen_faces(winner_index: int) -> void:
 	var winner_node: Node = all_players[winner_index]
 
 	winner_tag.text = "WINNER P%d" % (winner_index + 1)
-	winner_face.texture = _get_player_expression_texture(winner_node, "face")
+	winner_face.texture = _get_player_expression_texture(winner_node, "victory")
 	winner_face.visible = winner_face.texture != null
 
 	# Find first loser (not the winner)
@@ -871,7 +871,7 @@ func _update_end_screen_faces(winner_index: int) -> void:
 	if loser_index >= 0:
 		var loser_node: Node = all_players[loser_index]
 		loser_tag.text = "LOSER P%d" % (loser_index + 1)
-		loser_face.texture = _get_player_expression_texture(loser_node, "dolor")
+		loser_face.texture = _get_player_expression_texture(loser_node, "defeat")
 		if loser_face.texture == null:
 			loser_face.texture = _get_player_expression_texture(loser_node, "face")
 		loser_face.visible = loser_face.texture != null
