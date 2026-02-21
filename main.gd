@@ -48,6 +48,9 @@ const ARENA_PLAT_MOSS_COLORS: Array[Color] = [
 	Color(0.62, 0.50, 0.34, 1),
 	Color(0.50, 0.20, 0.05, 1),
 ]
+const ARENA_FLOOR_HALF_WIDTHS: Array[float] = [400.0, 350.0, 300.0]
+const FLOOR_CENTER_X := 576.0
+const FLOOR_Y := 600.0
 const RESULT_MIN_DISPLAY := 2.0
 const PLAYER_MAX_STOCKS := 3
 const SFX_CHEVRE_PATH := "res://assets/sounds/chevre.mp3"
@@ -55,11 +58,7 @@ const SFX_WILHELM_PATH := "res://assets/sounds/wilhelm.mp3"
 const SFX_FINISH_HIM_PATH := "res://assets/sounds/finish-him.mp3"
 const SFX_VICTORY_PATH := "res://assets/sounds/victoryff.swf.mp3"
 const SFX_JUMP_PATH := "res://assets/sounds/jump.mp3"
-const SPAWN_POSITIONS: Dictionary = {
-	2: [Vector2(300, 500), Vector2(850, 500)],
-	3: [Vector2(200, 500), Vector2(576, 500), Vector2(950, 500)],
-	4: [Vector2(150, 500), Vector2(434, 500), Vector2(718, 500), Vector2(1000, 500)],
-}
+const SPAWN_Y := 500.0
 const VIEWPORT_W := 1152.0
 const VIEWPORT_H := 648.0
 const P1_ACTIONS: Array[String] = ["p1_left", "p1_right", "p1_jump", "p1_attack", "p1_vapor", "p1_puddle", "p1_dash"]
@@ -68,11 +67,15 @@ const P3_ACTIONS: Array[String] = ["p3_left", "p3_right", "p3_jump", "p3_attack"
 const P4_ACTIONS: Array[String] = ["p4_left", "p4_right", "p4_jump", "p4_attack", "p4_vapor", "p4_puddle", "p4_dash"]
 const ALL_ACTION_SETS: Array = [P1_ACTIONS, P2_ACTIONS, P3_ACTIONS, P4_ACTIONS]
 
-const PLAYER_CONTROLS_TEXT: Array[String] = [
+const CONTROLS_2P: Array[String] = [
 	"Move: A / D\nJump: W\nAttack: E\nDash: R\nVapor: Q  Puddle: S",
 	"Move: J / L\nJump: I\nAttack: O\nDash: H\nVapor: U  Puddle: K",
-	"Move: Num4 / Num6\nJump: Num8\nAttack: Num5\nDash: Num9\nVapor: Num7  Puddle: Num2",
-	"Gamepad only\n(Device 4)",
+]
+const CONTROLS_MULTI: Array[String] = [
+	"Gamepad 1 only",
+	"Gamepad 2 only",
+	"Move: A / D\nJump: W\nAttack: E\nDash: R\nVapor: Q  Puddle: S",
+	"Move: J / L\nJump: I\nAttack: O\nDash: H\nVapor: U  Puddle: K",
 ]
 
 # ─── Enums / State ─────────────────────────────────────────────────────────────
@@ -116,6 +119,8 @@ var jump_player: AudioStreamPlayer
 @onready var platform_1_visual: ColorRect = $Platform1/ColorRect
 @onready var platform_2_visual: ColorRect = $Platform2/ColorRect
 @onready var platform_3_visual: ColorRect = $Platform3/ColorRect
+@onready var floor_body: StaticBody2D = $Floor
+@onready var floor_shape: CollisionShape2D = $Floor/CollisionShape2D
 @onready var floor_visual: ColorRect = $Floor/ColorRect
 @onready var floor_moss: ColorRect = $Floor/Moss
 @onready var platform_1_moss: ColorRect = $Platform1/Moss
@@ -231,20 +236,21 @@ func _register_extra_actions() -> void:
 			var action_name := "%s_%s" % [prefix, suffix]
 			if not InputMap.has_action(action_name):
 				InputMap.add_action(action_name, 0.2)
-	# P3 keyboard: numpad
-	_bind_key_to_action("p3_left", KEY_KP_4)
-	_bind_key_to_action("p3_right", KEY_KP_6)
-	_bind_key_to_action("p3_jump", KEY_KP_8)
-	_bind_key_to_action("p3_attack", KEY_KP_5)
-	_bind_key_to_action("p3_vapor", KEY_KP_7)
-	_bind_key_to_action("p3_puddle", KEY_KP_2)
-	_bind_key_to_action("p3_dash", KEY_KP_9)
-	# P4: no keyboard by default (gamepad only)
+	# P3 starts with P1's default keys (A/D/W/E/Q/S/R)
+	var p1_keys := P1_DEFAULT_KEYS.values()
+	var p3_actions_list := P3_ACTIONS
+	for i in p3_actions_list.size():
+		_bind_key_to_action(p3_actions_list[i], p1_keys[i])
+	# P4 starts with P2's default keys (J/L/I/O/U/K/H)
+	var p2_keys := P2_DEFAULT_KEYS.values()
+	var p4_actions_list := P4_ACTIONS
+	for i in p4_actions_list.size():
+		_bind_key_to_action(p4_actions_list[i], p2_keys[i])
 
 
 func _bind_key_to_action(action: String, keycode: Key) -> void:
 	var ev := InputEventKey.new()
-	ev.keycode = keycode
+	ev.physical_keycode = keycode
 	InputMap.action_add_event(action, ev)
 
 
@@ -492,7 +498,10 @@ func _update_char_ui() -> void:
 			_char_status_labels[i].add_theme_color_override("font_color", Color(0.9, 0.85, 0.3))
 
 		_char_face_rects[i].texture = _get_menu_character_texture(idx, "attack" if char_locked[i] else "face")
-		_char_control_labels[i].text = PLAYER_CONTROLS_TEXT[i]
+		if num_players <= 2:
+			_char_control_labels[i].text = CONTROLS_2P[i] if i < CONTROLS_2P.size() else ""
+		else:
+			_char_control_labels[i].text = CONTROLS_MULTI[i] if i < CONTROLS_MULTI.size() else ""
 
 	_char_hint.text = "Left/Right: Pick • Attack/Jump: Lock • Jump: Unlock • Vapor: Back • Esc: Quit"
 
@@ -664,11 +673,12 @@ func _add_arena_card_platforms(arena_idx: int, cx: float, cy: float, cw: float, 
 		plat.color = ARENA_PLAT_COLORS[arena_idx]
 		_arena_layer.add_child(plat)
 
-	# Floor
+	# Floor (per-arena width)
+	var fhw: float = ARENA_FLOOR_HALF_WIDTHS[arena_idx]
 	var floor_rect := ColorRect.new()
-	floor_rect.offset_left = cx + (576 - 400) * scale_x
+	floor_rect.offset_left = cx + (FLOOR_CENTER_X - fhw) * scale_x
 	floor_rect.offset_top = cy + 584.0 * scale_y
-	floor_rect.offset_right = cx + (576 + 400) * scale_x
+	floor_rect.offset_right = cx + (FLOOR_CENTER_X + fhw) * scale_x
 	floor_rect.offset_bottom = cy + 616.0 * scale_y
 	floor_rect.color = ARENA_FLOOR_COLORS[arena_idx]
 	_arena_layer.add_child(floor_rect)
@@ -756,6 +766,7 @@ func _start_game() -> void:
 	menu_phase = MenuPhase.NONE
 	hud.visible = true
 	hud.configure_for_players(num_players)
+	_apply_keyboard_layout_for_player_count()
 
 	# Reset stocks tracking
 	for i in 4:
@@ -763,7 +774,7 @@ func _start_game() -> void:
 		eliminated_players[i] = false
 
 	# Set spawn positions
-	var spawns: Array = SPAWN_POSITIONS[num_players]
+	var spawns := _compute_spawn_positions(num_players, selected_arena_index)
 	for i in num_players:
 		all_players[i].spawn_position = spawns[i]
 
@@ -935,6 +946,7 @@ func _return_to_main_menu() -> void:
 	end_screen.visible = false
 	_set_gameplay_enabled(false)
 	hud.visible = false
+	_restore_default_keyboard_layout()
 	_show_phase(MenuPhase.PLAYER_COUNT)
 
 
@@ -978,6 +990,7 @@ func _apply_arena(arena_index: int) -> void:
 	_set_platform_enabled(platform_2, platform_2_shape, platform_2_visual, true)
 	_set_platform_enabled(platform_3, platform_3_shape, platform_3_visual, true)
 
+	_resize_floor(ARENA_FLOOR_HALF_WIDTHS[arena_index])
 	_swap_background(arena_index)
 	_apply_arena_colors(arena_index)
 
@@ -1020,6 +1033,33 @@ func _apply_arena_colors(arena_index: int) -> void:
 	platform_2_moss.color = plat_m
 	platform_3_visual.color = plat_c
 	platform_3_moss.color = plat_m
+
+
+func _compute_spawn_positions(player_count: int, arena_index: int) -> Array[Vector2]:
+	var hw: float = ARENA_FLOOR_HALF_WIDTHS[arena_index]
+	var margin := 60.0
+	var left_x := FLOOR_CENTER_X - hw + margin
+	var right_x := FLOOR_CENTER_X + hw - margin
+	var positions: Array[Vector2] = []
+	if player_count == 1:
+		positions.append(Vector2(FLOOR_CENTER_X, SPAWN_Y))
+	elif player_count == 2:
+		positions.append(Vector2(left_x, SPAWN_Y))
+		positions.append(Vector2(right_x, SPAWN_Y))
+	else:
+		for i in player_count:
+			var t := float(i) / float(player_count - 1)
+			positions.append(Vector2(lerpf(left_x, right_x, t), SPAWN_Y))
+	return positions
+
+
+func _resize_floor(half_width: float) -> void:
+	var shape_res := floor_shape.shape as RectangleShape2D
+	shape_res.size = Vector2(half_width * 2.0, 32.0)
+	floor_visual.offset_left = -half_width
+	floor_visual.offset_right = half_width
+	floor_moss.offset_left = -half_width
+	floor_moss.offset_right = half_width
 
 
 func _set_platform_enabled(platform_node: Node2D, platform_shape: CollisionShape2D, platform_visual: CanvasItem, enabled: bool) -> void:
@@ -1098,17 +1138,15 @@ func _refresh_joypad_mapping() -> void:
 		names.append("%d:%s" % [joy_id, Input.get_joy_name(joy_id)])
 	print("Connected joypads -> ", ", ".join(names))
 
-	var action_sets: Array = [P1_ACTIONS, P2_ACTIONS, P3_ACTIONS, P4_ACTIONS]
-	for p_idx in connected.size():
-		if p_idx >= 4:
-			break
-		var device: int = connected[p_idx]
-		_force_joypad_bindings(action_sets[p_idx], device)
-		print("Mapped P%d to device %d" % [p_idx + 1, device])
+	if connected.size() >= 1:
+		_force_joypad_bindings(P1_ACTIONS, connected[0])
+		print("Mapped P1 gamepad to device %d" % connected[0])
+	if connected.size() >= 2:
+		_force_joypad_bindings(P2_ACTIONS, connected[1])
+		print("Mapped P2 gamepad to device %d" % connected[1])
 
-	# Strip joypad events from unmapped player sets
-	for p_idx in range(connected.size(), 4):
-		_strip_joypad_events(action_sets[p_idx])
+	_strip_joypad_events(P3_ACTIONS)
+	_strip_joypad_events(P4_ACTIONS)
 
 
 func _print_snap_joystick_hint() -> void:
@@ -1175,13 +1213,72 @@ func _strip_joypad_events(actions: Array[String]) -> void:
 				InputMap.action_add_event(action, event)
 
 
+const P1_DEFAULT_KEYS: Dictionary = {
+	"p1_left": KEY_A, "p1_right": KEY_D, "p1_jump": KEY_W,
+	"p1_attack": KEY_E, "p1_vapor": KEY_Q, "p1_puddle": KEY_S, "p1_dash": KEY_R,
+}
+const P2_DEFAULT_KEYS: Dictionary = {
+	"p2_left": KEY_J, "p2_right": KEY_L, "p2_jump": KEY_I,
+	"p2_attack": KEY_O, "p2_vapor": KEY_U, "p2_puddle": KEY_K, "p2_dash": KEY_H,
+}
+const P1_DUMMY_KEYS: Dictionary = {
+	"p1_left": KEY_F1, "p1_right": KEY_F2, "p1_jump": KEY_F3,
+	"p1_attack": KEY_F4, "p1_vapor": KEY_F5, "p1_puddle": KEY_F6, "p1_dash": KEY_PAUSE,
+}
+const P2_DUMMY_KEYS: Dictionary = {
+	"p2_left": KEY_F7, "p2_right": KEY_F8, "p2_jump": KEY_F9,
+	"p2_attack": KEY_F10, "p2_vapor": KEY_F11, "p2_puddle": KEY_F12, "p2_dash": KEY_PRINT,
+}
+
+func _apply_keyboard_layout_for_player_count() -> void:
+	if num_players <= 2:
+		return
+	# P3 gets P1's default keyboard keys
+	_replace_keyboard_events(P3_ACTIONS, P1_DEFAULT_KEYS.values())
+	# P4 gets P2's default keyboard keys
+	_replace_keyboard_events(P4_ACTIONS, P2_DEFAULT_KEYS.values())
+	# P1 gets dummy keys (gamepad only in practice)
+	_replace_keyboard_events(P1_ACTIONS, P1_DUMMY_KEYS.values())
+	# P2 gets dummy keys (gamepad only in practice)
+	_replace_keyboard_events(P2_ACTIONS, P2_DUMMY_KEYS.values())
+	print("Multi-player keyboard layout applied: P3=WASD/QES, P4=IJKL/UOK, P1/P2=gamepad only")
+
+
+func _restore_default_keyboard_layout() -> void:
+	_replace_keyboard_events(P1_ACTIONS, P1_DEFAULT_KEYS.values())
+	_replace_keyboard_events(P2_ACTIONS, P2_DEFAULT_KEYS.values())
+	# Strip keyboard from P3/P4 and re-register their original keys
+	_strip_keyboard_events(P3_ACTIONS)
+	_strip_keyboard_events(P4_ACTIONS)
+	_register_extra_actions()
+	print("Default keyboard layout restored")
+
+
+func _replace_keyboard_events(actions: Array[String], keys: Array) -> void:
+	for i in actions.size():
+		var action: String = actions[i]
+		var events := InputMap.action_get_events(action)
+		InputMap.action_erase_events(action)
+		for event in events:
+			if not (event is InputEventKey):
+				InputMap.action_add_event(action, event)
+		var ev := InputEventKey.new()
+		ev.physical_keycode = keys[i]
+		InputMap.action_add_event(action, ev)
+
+
+func _strip_keyboard_events(actions: Array[String]) -> void:
+	for action in actions:
+		if not InputMap.has_action(action):
+			continue
+		var events := InputMap.action_get_events(action)
+		InputMap.action_erase_events(action)
+		for event in events:
+			if not (event is InputEventKey):
+				InputMap.action_add_event(action, event)
+
+
 func _ensure_remote_fallback_bindings() -> void:
-	_bind_key_if_missing("p1_left", KEY_LEFT)
-	_bind_key_if_missing("p1_right", KEY_RIGHT)
-	_bind_key_if_missing("p1_jump", KEY_UP)
-	_bind_key_if_missing("p1_jump", KEY_SPACE)
-	_bind_key_if_missing("p1_attack", KEY_ENTER)
-	_bind_key_if_missing("p1_attack", KEY_KP_ENTER)
 	_bind_key_if_missing("p1_vapor", KEY_Q)
 	_bind_key_if_missing("p1_puddle", KEY_S)
 
