@@ -9,6 +9,9 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(800, 32)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor_side"]
+size = Vector2(230, 32)
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_plat1"]
 size = Vector2(200, 16)
 
@@ -460,6 +463,50 @@ color = Color(0.2, 0.54, 0.22, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Floor"]
 shape = SubResource("RectangleShape2D_floor")
+
+[node name="FloorLeft" type="StaticBody2D" parent="."]
+visible = false
+position = Vector2(391, 600)
+
+[node name="ColorRect" type="ColorRect" parent="FloorLeft"]
+offset_left = -115.0
+offset_top = -16.0
+offset_right = 115.0
+offset_bottom = 16.0
+color = Color(0.25, 0.12, 0.08, 1)
+
+[node name="Moss" type="ColorRect" parent="FloorLeft"]
+offset_left = -115.0
+offset_top = -20.0
+offset_right = 115.0
+offset_bottom = -10.0
+color = Color(0.55, 0.22, 0.05, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="FloorLeft"]
+shape = SubResource("RectangleShape2D_floor_side")
+disabled = true
+
+[node name="FloorRight" type="StaticBody2D" parent="."]
+visible = false
+position = Vector2(761, 600)
+
+[node name="ColorRect" type="ColorRect" parent="FloorRight"]
+offset_left = -115.0
+offset_top = -16.0
+offset_right = 115.0
+offset_bottom = 16.0
+color = Color(0.25, 0.12, 0.08, 1)
+
+[node name="Moss" type="ColorRect" parent="FloorRight"]
+offset_left = -115.0
+offset_top = -20.0
+offset_right = 115.0
+offset_bottom = -10.0
+color = Color(0.55, 0.22, 0.05, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="FloorRight"]
+shape = SubResource("RectangleShape2D_floor_side")
+disabled = true
 
 [node name="Platform1" type="StaticBody2D" parent="." groups=["platform"]]
 position = Vector2(350, 480)

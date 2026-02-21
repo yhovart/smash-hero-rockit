@@ -151,6 +151,14 @@ var jump_player: AudioStreamPlayer
 @onready var floor_shape: CollisionShape2D = $Floor/CollisionShape2D
 @onready var floor_visual: ColorRect = $Floor/ColorRect
 @onready var floor_moss: ColorRect = $Floor/Moss
+@onready var floor_left_body: StaticBody2D = $FloorLeft
+@onready var floor_left_shape: CollisionShape2D = $FloorLeft/CollisionShape2D
+@onready var floor_left_visual: ColorRect = $FloorLeft/ColorRect
+@onready var floor_left_moss: ColorRect = $FloorLeft/Moss
+@onready var floor_right_body: StaticBody2D = $FloorRight
+@onready var floor_right_shape: CollisionShape2D = $FloorRight/CollisionShape2D
+@onready var floor_right_visual: ColorRect = $FloorRight/ColorRect
+@onready var floor_right_moss: ColorRect = $FloorRight/Moss
 @onready var platform_1_moss: ColorRect = $Platform1/Moss
 @onready var platform_2_moss: ColorRect = $Platform2/Moss
 @onready var platform_3_moss: ColorRect = $Platform3/Moss
@@ -693,37 +701,62 @@ func _add_arena_card_platforms(arena_idx: int, cx: float, cy: float, cw: float, 
 
 	var positions: Array
 	var sizes: Array
+	var rotations: Array
 	match arena_idx:
 		0:  # Classic
 			positions = [Vector2(350, 480), Vector2(700, 380), Vector2(450, 280)]
 			sizes = [Vector2(200, 12), Vector2(160, 12), Vector2(200, 12)]
+			rotations = [0.0, 0.0, 0.0]
 		1:  # Sky Bridge
 			positions = [Vector2(300, 500), Vector2(576, 420), Vector2(850, 340)]
 			sizes = [Vector2(200, 12), Vector2(160, 12), Vector2(200, 12)]
+			rotations = [0.0, 0.0, 0.0]
 		2:  # Pitfall
-			positions = [Vector2(320, 500), Vector2(576, 360), Vector2(832, 500)]
-			sizes = [Vector2(200, 12), Vector2(0, 0), Vector2(200, 12)]
+			positions = [Vector2(320, 500), Vector2(576, 420), Vector2(832, 500)]
+			sizes = [Vector2(200, 12), Vector2(200, 12), Vector2(200, 12)]
+			rotations = [0.0, -18.0, 0.0]
 
 	for j in 3:
 		if sizes[j] == Vector2.ZERO:
 			continue
 		var plat := ColorRect.new()
+		var scaled_w: float = sizes[j].x * scale_x
+		var scaled_h: float = sizes[j].y * scale_y
 		plat.offset_left = cx + (positions[j].x - sizes[j].x / 2.0) * scale_x
 		plat.offset_top = cy + positions[j].y * scale_y
-		plat.offset_right = plat.offset_left + sizes[j].x * scale_x
-		plat.offset_bottom = plat.offset_top + sizes[j].y * scale_y
+		plat.offset_right = plat.offset_left + scaled_w
+		plat.offset_bottom = plat.offset_top + scaled_h
+		plat.pivot_offset = Vector2(scaled_w * 0.5, scaled_h * 0.5)
+		plat.rotation_degrees = rotations[j]
 		plat.color = ARENA_PLAT_COLORS[arena_idx]
 		_arena_layer.add_child(plat)
 
-	# Floor (per-arena width)
-	var fhw: float = ARENA_FLOOR_HALF_WIDTHS[arena_idx]
-	var floor_rect := ColorRect.new()
-	floor_rect.offset_left = cx + (FLOOR_CENTER_X - fhw) * scale_x
-	floor_rect.offset_top = cy + 584.0 * scale_y
-	floor_rect.offset_right = cx + (FLOOR_CENTER_X + fhw) * scale_x
-	floor_rect.offset_bottom = cy + 616.0 * scale_y
-	floor_rect.color = ARENA_FLOOR_COLORS[arena_idx]
-	_arena_layer.add_child(floor_rect)
+	if arena_idx == 2:
+		var floor_left := ColorRect.new()
+		floor_left.offset_left = cx + (391.0 - 115.0) * scale_x
+		floor_left.offset_top = cy + 584.0 * scale_y
+		floor_left.offset_right = cx + (391.0 + 115.0) * scale_x
+		floor_left.offset_bottom = cy + 616.0 * scale_y
+		floor_left.color = ARENA_FLOOR_COLORS[arena_idx]
+		_arena_layer.add_child(floor_left)
+
+		var floor_right := ColorRect.new()
+		floor_right.offset_left = cx + (761.0 - 115.0) * scale_x
+		floor_right.offset_top = cy + 584.0 * scale_y
+		floor_right.offset_right = cx + (761.0 + 115.0) * scale_x
+		floor_right.offset_bottom = cy + 616.0 * scale_y
+		floor_right.color = ARENA_FLOOR_COLORS[arena_idx]
+		_arena_layer.add_child(floor_right)
+	else:
+		# Floor (per-arena width)
+		var fhw: float = ARENA_FLOOR_HALF_WIDTHS[arena_idx]
+		var floor_rect := ColorRect.new()
+		floor_rect.offset_left = cx + (FLOOR_CENTER_X - fhw) * scale_x
+		floor_rect.offset_top = cy + 584.0 * scale_y
+		floor_rect.offset_right = cx + (FLOOR_CENTER_X + fhw) * scale_x
+		floor_rect.offset_bottom = cy + 616.0 * scale_y
+		floor_rect.color = ARENA_FLOOR_COLORS[arena_idx]
+		_arena_layer.add_child(floor_rect)
 
 
 func _load_arena_preview_bgs() -> void:
@@ -1037,6 +1070,13 @@ func _apply_arena(arena_index: int) -> void:
 	_set_platform_enabled(platform_1, platform_1_shape, platform_1_visual, true)
 	_set_platform_enabled(platform_2, platform_2_shape, platform_2_visual, true)
 	_set_platform_enabled(platform_3, platform_3_shape, platform_3_visual, true)
+	_set_floor_split_enabled(false)
+	platform_1.rotation = 0.0
+	platform_2.rotation = 0.0
+	platform_3.rotation = 0.0
+	platform_1.scale = Vector2.ONE
+	platform_2.scale = Vector2.ONE
+	platform_3.scale = Vector2.ONE
 
 	_resize_floor(ARENA_FLOOR_HALF_WIDTHS[arena_index])
 	_swap_background(arena_index)
@@ -1053,9 +1093,11 @@ func _apply_arena(arena_index: int) -> void:
 			platform_3.position = Vector2(850, 340)
 		2:
 			platform_1.position = Vector2(320, 500)
-			platform_2.position = Vector2(576, 360)
+			platform_2.position = Vector2(576, 420)
 			platform_3.position = Vector2(832, 500)
-			_set_platform_enabled(platform_2, platform_2_shape, platform_2_visual, false)
+			platform_2.rotation_degrees = -18.0
+			platform_2.scale = Vector2(1.25, 1.0)
+			_set_floor_split_enabled(true)
 
 
 func _swap_background(arena_index: int) -> void:
@@ -1075,6 +1117,10 @@ func _apply_arena_colors(arena_index: int) -> void:
 	var plat_m := ARENA_PLAT_MOSS_COLORS[arena_index]
 	floor_visual.color = floor_c
 	floor_moss.color = moss_c
+	floor_left_visual.color = floor_c
+	floor_left_moss.color = moss_c
+	floor_right_visual.color = floor_c
+	floor_right_moss.color = moss_c
 	platform_1_visual.color = plat_c
 	platform_1_moss.color = plat_m
 	platform_2_visual.color = plat_c
@@ -1108,6 +1154,15 @@ func _resize_floor(half_width: float) -> void:
 	floor_visual.offset_right = half_width
 	floor_moss.offset_left = -half_width
 	floor_moss.offset_right = half_width
+
+
+func _set_floor_split_enabled(enabled: bool) -> void:
+	floor_body.visible = not enabled
+	floor_shape.disabled = enabled
+	floor_left_body.visible = enabled
+	floor_left_shape.disabled = not enabled
+	floor_right_body.visible = enabled
+	floor_right_shape.disabled = not enabled
 
 
 func _set_platform_enabled(platform_node: Node2D, platform_shape: CollisionShape2D, platform_visual: CanvasItem, enabled: bool) -> void:
