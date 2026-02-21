@@ -419,7 +419,7 @@ offset_right = 286.0
 offset_bottom = 76.0
 text = "P1
 Move: A / D    Jump: W    Attack: E
-Hold E: Projectile    Vapor: Q    Puddle/FastFall: S
+Hold E: Projectile    Vapor: Q    Fastfall: S
 Drop platform: W + S    Menu: Esc"
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.5, 0.7, 1.0, 1.0)
@@ -431,7 +431,7 @@ offset_right = 582.0
 offset_bottom = 76.0
 text = "P2
 Move: J / L    Jump: I    Attack: O
-Hold O: Projectile    Vapor: U    Puddle/FastFall: K
+Hold O: Projectile    Vapor: U    Fastfall: K
 Drop platform: I + K    Menu: Esc"
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(1.0, 0.5, 0.45, 1.0)

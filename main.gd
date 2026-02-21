@@ -68,14 +68,14 @@ const P4_ACTIONS: Array[String] = ["p4_left", "p4_right", "p4_jump", "p4_attack"
 const ALL_ACTION_SETS: Array = [P1_ACTIONS, P2_ACTIONS, P3_ACTIONS, P4_ACTIONS]
 
 const CONTROLS_2P: Array[String] = [
-	"Move: A / D\nJump: W\nAttack: E\nDash: R\nVapor: Q  Puddle: S",
-	"Move: J / L\nJump: I\nAttack: O\nDash: H\nVapor: U  Puddle: K",
+	"Move: A / D\nJump: W\nAttack: E\nDash: R\nVapor: Q  Fastfall: S",
+	"Move: J / L\nJump: I\nAttack: O\nDash: H\nVapor: U  Fastfall: K",
 ]
 const CONTROLS_MULTI: Array[String] = [
 	"Gamepad 1 only",
 	"Gamepad 2 only",
-	"Move: A / D\nJump: W\nAttack: E\nDash: R\nVapor: Q  Puddle: S",
-	"Move: J / L\nJump: I\nAttack: O\nDash: H\nVapor: U  Puddle: K",
+	"Move: A / D\nJump: W\nAttack: E\nDash: R\nVapor: Q  Fastfall: S",
+	"Move: J / L\nJump: I\nAttack: O\nDash: H\nVapor: U  Fastfall: K",
 ]
 
 # ─── Enums / State ─────────────────────────────────────────────────────────────

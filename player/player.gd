@@ -1,6 +1,6 @@
 extends CharacterBody2D
 
-enum Form { WATER, VAPOR, PUDDLE }
+enum Form { WATER, VAPOR }
 
 const SPEED = 300.0
 const ACCELERATION = 3200.0
@@ -16,10 +16,7 @@ const DOUBLE_JUMP_VELOCITY = -420.0
 const FAST_FALL_SPEED = 900.0
 const VAPOR_SPEED = 120.0
 const VAPOR_FLOAT = -80.0
-const VAPOR_MAX_TIME = 3.0
-const PUDDLE_SPEED = 150.0
-const PUDDLE_MAX_TIME = 3.0
-const FORM_COOLDOWN = 2.0
+const VAPOR_MAX_TIME = 2.0
 const ATTACK_KNOCKBACK = 800.0
 const STOMP_BOUNCE = -350.0
 const DASH_SPEED = 600.0
@@ -44,7 +41,6 @@ var projectile_scene: PackedScene = preload("res://player/water_projectile.tscn"
 
 var form: Form = Form.WATER
 var form_timer := 0.0
-var cooldown_timer := 0.0
 var hits_taken := 0
 var invincible_timer := 0.0
 var is_attacking := false
@@ -55,8 +51,7 @@ var is_charging := false
 const CHARGE_THRESHOLD = 0.4
 const PROJECTILE_COOLDOWN = 0.8
 var projectile_cooldown_timer := 0.0
-var puddle_buffer := 0.0
-const PUDDLE_BUFFER_TIME = 0.2
+var stunned_timer := 0.0
 var drop_through_timer := 0.0
 const DROP_THROUGH_TIME = 0.25
 var coyote_timer := 0.0
@@ -111,9 +106,9 @@ func apply_character_profile(new_color: Color, new_asset_prefix: String) -> void
 	asset_prefix = new_asset_prefix
 	_load_visual_textures()
 	var has_avatar := visual_textures.has("face")
-	avatar.visible = has_avatar and form != Form.PUDDLE
-	body.visible = not has_avatar and form != Form.PUDDLE
-	shine.visible = not has_avatar and form != Form.PUDDLE
+	avatar.visible = has_avatar
+	body.visible = not has_avatar
+	shine.visible = not has_avatar
 	_update_visual_state()
 
 
@@ -127,7 +122,6 @@ func reset_for_round() -> void:
 	_reset_to_spawn()
 
 func _physics_process(delta: float) -> void:
-	cooldown_timer = max(cooldown_timer - delta, 0.0)
 	invincible_timer = max(invincible_timer - delta, 0.0)
 	projectile_cooldown_timer = max(projectile_cooldown_timer - delta, 0.0)
 	dash_cooldown_timer = max(dash_cooldown_timer - delta, 0.0)
@@ -139,8 +133,10 @@ func _physics_process(delta: float) -> void:
 
 	if invincible_timer > 0.0:
 		avatar.modulate.a = 0.5 if fmod(invincible_timer, 0.15) > 0.075 else 1.0
-	elif form == Form.WATER:
-		avatar.modulate.a = 1.0
+	elif stunned_timer > 0.0:
+		avatar.modulate = Color(1.0, 0.3, 0.3, 0.9 if fmod(Time.get_ticks_msec() / 1000.0, 0.05) > 0.025 else 1.0)
+	else:
+		avatar.modulate = Color(1.0, 1.0, 1.0, 1.0)
 
 	_handle_attack(delta)
 	_handle_dash(delta)
@@ -149,19 +145,27 @@ func _physics_process(delta: float) -> void:
 	if form != Form.WATER:
 		form_timer -= delta
 		if form_timer <= 0.0:
-			_exit_form()
+			if form == Form.VAPOR:
+				_exit_vapor_timeout()
+			else:
+				_exit_form()
 
 	match form:
 		Form.WATER:
 			_normal_physics(delta)
 		Form.VAPOR:
 			_vapor_physics(delta)
-		Form.PUDDLE:
-			_puddle_physics(delta)
 
 	_update_visual_state()
 
+	if stunned_timer > 0.0:
+		velocity.x = 0.0
+		velocity.y += get_gravity().y * delta
+
 	move_and_slide()
+
+	if stunned_timer > 0.0 and is_on_floor():
+		stunned_timer = 0.0
 
 	if is_fast_falling:
 		_check_stomp()
@@ -189,6 +193,7 @@ func _lose_stock() -> void:
 func _reset_to_spawn() -> void:
 	if form != Form.WATER:
 		_exit_form()
+	stunned_timer = 0.0
 	is_charging = false
 	$ChargeVisual.visible = false
 	charge_time = 0.0
@@ -206,6 +211,8 @@ func _reset_to_spawn() -> void:
 	velocity = Vector2.ZERO
 
 func _handle_dash(delta: float) -> void:
+	if stunned_timer > 0.0:
+		return
 	if is_dashing:
 		dash_timer -= delta
 		if dash_timer <= 0.0:
@@ -221,35 +228,21 @@ func _handle_dash(delta: float) -> void:
 		velocity.x = facing * DASH_SPEED
 		velocity.y = 0.0
 
-func _handle_form_switch(delta: float) -> void:
-	if puddle_buffer > 0.0:
-		puddle_buffer -= delta
-
-	if Input.is_action_just_pressed(action_puddle):
-		puddle_buffer = PUDDLE_BUFFER_TIME
+func _handle_form_switch(_delta: float) -> void:
+	if stunned_timer > 0.0:
+		return
 
 	if form == Form.VAPOR:
 		if Input.is_action_just_released(action_vapor):
 			_exit_form()
 		return
 
-	if form == Form.PUDDLE:
-		if Input.is_action_just_released(action_puddle) or not Input.is_action_pressed(action_puddle):
-			_exit_form()
-		return
-
-	if cooldown_timer > 0.0:
-		return
-
 	if Input.is_action_just_pressed(action_vapor):
 		_enter_vapor()
-		return
-
-	if puddle_buffer > 0.0 and is_on_floor():
-		puddle_buffer = 0.0
-		_enter_puddle()
 
 func _handle_attack(delta: float) -> void:
+	if stunned_timer > 0.0:
+		return
 	if attack_timer > 0.0:
 		attack_timer -= delta
 		if attack_timer <= 0.0:
@@ -302,7 +295,7 @@ func _fire_projectile() -> void:
 	get_parent().add_child(proj)
 
 func _normal_physics(delta: float) -> void:
-	if is_dashing:
+	if is_dashing or stunned_timer > 0.0:
 		return
 
 	var on_floor := is_on_floor()
@@ -368,29 +361,6 @@ func _vapor_physics(_delta: float) -> void:
 	else:
 		velocity.x = move_toward(velocity.x, 0, VAPOR_SPEED)
 
-func _puddle_physics(delta: float) -> void:
-	if not is_on_floor():
-		velocity += get_gravity() * delta
-
-	if Input.is_action_just_pressed(action_jump) and is_on_floor():
-		var on_platform := false
-		for i in get_slide_collision_count():
-			var col := get_slide_collision(i)
-			if col.get_collider().is_in_group("platform"):
-				on_platform = true
-				break
-		if on_platform:
-			set_collision_mask_value(1, false)
-			drop_through_timer = DROP_THROUGH_TIME
-			velocity.y = 20.0
-
-	var direction := Input.get_axis(action_left, action_right)
-	if direction:
-		velocity.x = direction * PUDDLE_SPEED
-		facing = sign(direction)
-	else:
-		velocity.x = move_toward(velocity.x, 0, PUDDLE_SPEED)
-
 func _enter_vapor() -> void:
 	form = Form.VAPOR
 	form_timer = VAPOR_MAX_TIME
@@ -401,20 +371,23 @@ func _enter_vapor() -> void:
 	puddle_hitbox.monitoring = false
 	scale = Vector2(1.3, 0.8)
 
-func _enter_puddle() -> void:
-	form = Form.PUDDLE
-	form_timer = PUDDLE_MAX_TIME
-	avatar.visible = false
-	puddle_body.visible = true
-	puddle_hitbox.monitoring = true
-	collision_shape.position = Vector2(0, 17)
-	collision_shape.shape.radius = 4.0
+
+func _exit_vapor_timeout() -> void:
+	form = Form.WATER
+	body.visible = false
+	shine.visible = false
+	avatar.visible = true
+	avatar.modulate = Color(1.0, 0.3, 0.3, 1.0)
+	vapor_particles.emitting = false
+	puddle_body.visible = false
+	puddle_hitbox.monitoring = false
 	scale = Vector2(1.0, 1.0)
+	velocity = Vector2.ZERO
+	stunned_timer = 1.0
+
 
 func _exit_form() -> void:
-	var was_puddle := form == Form.PUDDLE
 	form = Form.WATER
-	cooldown_timer = FORM_COOLDOWN
 	if drop_through_timer > 0.0:
 		drop_through_timer = 0.0
 		set_collision_mask_value(1, true)
@@ -426,9 +399,6 @@ func _exit_form() -> void:
 	puddle_body.visible = false
 	puddle_hitbox.monitoring = false
 	scale = Vector2(1.0, 1.0)
-	if was_puddle:
-		collision_shape.position = Vector2(0, 4)
-		collision_shape.shape.radius = 14.0
 
 func _check_stomp() -> void:
 	for i in get_slide_collision_count():
@@ -514,8 +484,6 @@ func get_expression_texture(state: String) -> Texture2D:
 	return visual_textures.get(state, visual_textures.get("face", null))
 
 func _update_visual_state() -> void:
-	if form == Form.PUDDLE:
-		return
 	if invincible_timer > 0.0:
 		_update_avatar_texture("dolor")
 	elif is_attacking or is_charging or is_fast_falling:
