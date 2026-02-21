@@ -6,6 +6,14 @@ const HEART_ICON_SIZE = 18.0
 
 var health_points := [MAX_HEARTS, MAX_HEARTS, MAX_HEARTS, MAX_HEARTS]
 var _active_count := 2
+var _player_panels: Array[ColorRect] = []
+
+const _PANEL_TINTS: Array[Color] = [
+	Color(0.07, 0.14, 0.28, 0.80),
+	Color(0.22, 0.06, 0.04, 0.80),
+	Color(0.06, 0.18, 0.09, 0.80),
+	Color(0.22, 0.15, 0.02, 0.80),
+]
 
 @onready var hit_containers: Array[HBoxContainer] = [$P1Shields, $P2Shields, $P3Shields, $P4Shields]
 @onready var stock_containers: Array[HBoxContainer] = [$P1Stocks, $P2Stocks, $P3Stocks, $P4Stocks]
@@ -13,6 +21,13 @@ var _active_count := 2
 
 
 func _ready() -> void:
+	for i in 4:
+		var panel := ColorRect.new()
+		panel.color = _PANEL_TINTS[i]
+		panel.visible = false
+		panel.z_index = -1
+		add_child(panel)
+		_player_panels.append(panel)
 	for i in 4:
 		set_player_stocks(i, MAX_HEARTS)
 	legend_bg.visible = false
@@ -24,23 +39,30 @@ func configure_for_players(count: int) -> void:
 	for i in 4:
 		hit_containers[i].visible = i < count
 		stock_containers[i].visible = i < count
+		if i < _player_panels.size():
+			_player_panels[i].visible = i < count
 
 	# Reposition HUD containers based on player count
 	match count:
 		2:
 			_position_container(hit_containers[0], 16, 12, 140, 42)
 			_position_container(stock_containers[0], 16, 46, 140, 70)
+			_position_container(_player_panels[0], 8, 5, 150, 77)
 			_position_container(hit_containers[1], 1012, 12, 1136, 42)
 			_position_container(stock_containers[1], 1012, 46, 1136, 70)
+			_position_container(_player_panels[1], 1002, 5, 1144, 77)
 			hit_containers[1].alignment = BoxContainer.ALIGNMENT_END
 			stock_containers[1].alignment = BoxContainer.ALIGNMENT_END
 		3:
 			_position_container(hit_containers[0], 16, 12, 140, 42)
 			_position_container(stock_containers[0], 16, 46, 140, 70)
+			_position_container(_player_panels[0], 8, 5, 150, 77)
 			_position_container(hit_containers[1], 500, 12, 652, 42)
 			_position_container(stock_containers[1], 500, 46, 652, 70)
+			_position_container(_player_panels[1], 492, 5, 660, 77)
 			_position_container(hit_containers[2], 1012, 12, 1136, 42)
 			_position_container(stock_containers[2], 1012, 46, 1136, 70)
+			_position_container(_player_panels[2], 1002, 5, 1144, 77)
 			hit_containers[1].alignment = BoxContainer.ALIGNMENT_CENTER
 			stock_containers[1].alignment = BoxContainer.ALIGNMENT_CENTER
 			hit_containers[2].alignment = BoxContainer.ALIGNMENT_END
@@ -48,12 +70,16 @@ func configure_for_players(count: int) -> void:
 		4:
 			_position_container(hit_containers[0], 16, 12, 140, 42)
 			_position_container(stock_containers[0], 16, 46, 140, 70)
+			_position_container(_player_panels[0], 8, 5, 150, 77)
 			_position_container(hit_containers[1], 350, 12, 490, 42)
 			_position_container(stock_containers[1], 350, 46, 490, 70)
+			_position_container(_player_panels[1], 342, 5, 498, 77)
 			_position_container(hit_containers[2], 664, 12, 804, 42)
 			_position_container(stock_containers[2], 664, 46, 804, 70)
+			_position_container(_player_panels[2], 656, 5, 812, 77)
 			_position_container(hit_containers[3], 1012, 12, 1136, 42)
 			_position_container(stock_containers[3], 1012, 46, 1136, 70)
+			_position_container(_player_panels[3], 1002, 5, 1144, 77)
 			hit_containers[1].alignment = BoxContainer.ALIGNMENT_CENTER
 			stock_containers[1].alignment = BoxContainer.ALIGNMENT_CENTER
 			hit_containers[2].alignment = BoxContainer.ALIGNMENT_CENTER

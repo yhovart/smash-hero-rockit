@@ -192,6 +192,7 @@ var arena_music_streams: Array[AudioStream] = []
 var _count_layer: CanvasLayer
 var _count_boxes: Array[ColorRect] = []
 var _count_labels: Array[Label] = []
+var _count_frames: Array[ColorRect] = []
 
 var _char_layer: CanvasLayer
 var _char_title: Label
@@ -201,6 +202,8 @@ var _char_status_labels: Array[Label] = []
 var _char_control_labels: Array[Label] = []
 var _char_hint: Label
 var _char_columns: Array[Control] = []
+var _char_card_bgs: Array[ColorRect] = []
+var _char_card_accents: Array[ColorRect] = []
 
 var _arena_layer: CanvasLayer
 var _arena_title: Label
@@ -208,7 +211,11 @@ var _arena_cards: Array[ColorRect] = []
 var _arena_card_labels: Array[Label] = []
 var _arena_card_bg_holders: Array[Node2D] = []
 var _arena_card_glows: Array[ColorRect] = []
+var _arena_card_frames: Array[ColorRect] = []
 var _arena_hint: Label
+
+var _plat_highlight_rects: Array[ColorRect] = []
+var _plat_shadow_rects: Array[ColorRect] = []
 
 # ─── Ready ─────────────────────────────────────────────────────────────────────
 
@@ -230,6 +237,7 @@ func _ready() -> void:
 	_setup_audio_players()
 	_build_menu_asset_lookup()
 	_swap_background(0)
+	_setup_platform_visual_extras()
 	end_screen.visible = false
 	_old_char_select.visible = false
 	hud.visible = false
@@ -312,63 +320,133 @@ func _build_count_screen() -> void:
 	_count_layer.layer = 10
 	add_child(_count_layer)
 
+	# Backdrop
 	var backdrop := ColorRect.new()
-	backdrop.color = Color(0, 0, 0, 0.80)
+	backdrop.color = Color(0.04, 0.05, 0.08, 0.93)
 	backdrop.offset_right = VIEWPORT_W
 	backdrop.offset_bottom = VIEWPORT_H
 	_count_layer.add_child(backdrop)
 
-	var title := _make_label("SMASH HERO ROCKIT", 42, Color.WHITE)
+	# Top accent bar
+	var top_bar := ColorRect.new()
+	top_bar.color = Color(0.25, 0.50, 0.95, 0.90)
+	top_bar.offset_right = VIEWPORT_W
+	top_bar.offset_bottom = 4.0
+	_count_layer.add_child(top_bar)
+
+	# Bottom accent bar
+	var bot_bar := ColorRect.new()
+	bot_bar.color = Color(0.25, 0.50, 0.95, 0.90)
+	bot_bar.offset_top = VIEWPORT_H - 4.0
+	bot_bar.offset_right = VIEWPORT_W
+	bot_bar.offset_bottom = VIEWPORT_H
+	_count_layer.add_child(bot_bar)
+
+	# Title drop-shadow
+	var title_shadow := _make_label("SMASH HERO ROCKIT", 46, Color(0.05, 0.08, 0.22, 0.88))
+	title_shadow.offset_left = 3.0
+	title_shadow.offset_top = 93.0
+	title_shadow.offset_right = VIEWPORT_W + 3.0
+	title_shadow.offset_bottom = 157.0
+	title_shadow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_count_layer.add_child(title_shadow)
+
+	# Title
+	var title := _make_label("SMASH HERO ROCKIT", 46, Color.WHITE)
 	title.offset_left = 0
-	title.offset_top = 100
+	title.offset_top = 90.0
 	title.offset_right = VIEWPORT_W
-	title.offset_bottom = 160
+	title.offset_bottom = 154.0
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_count_layer.add_child(title)
 
-	var subtitle := _make_label("How many players?", 26, Color(0.8, 0.85, 1.0))
+	# Divider accent line
+	var divider := ColorRect.new()
+	divider.color = Color(0.30, 0.55, 1.0, 0.55)
+	divider.offset_left = VIEWPORT_W * 0.30
+	divider.offset_top = 165.0
+	divider.offset_right = VIEWPORT_W * 0.70
+	divider.offset_bottom = 167.0
+	_count_layer.add_child(divider)
+
+	# Subtitle
+	var subtitle := _make_label("How many players?", 22, Color(0.72, 0.80, 1.0, 1.0))
 	subtitle.offset_left = 0
-	subtitle.offset_top = 180
+	subtitle.offset_top = 176.0
 	subtitle.offset_right = VIEWPORT_W
-	subtitle.offset_bottom = 220
+	subtitle.offset_bottom = 210.0
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_count_layer.add_child(subtitle)
 
 	var box_w := 140.0
-	var box_h := 120.0
-	var gap := 50.0
+	var box_h := 130.0
+	var gap := 60.0
 	var total_w := 3 * box_w + 2 * gap
 	var start_x := (VIEWPORT_W - total_w) / 2.0
-	var box_y := 260.0
+	var box_y := 238.0
 
 	_count_boxes.clear()
 	_count_labels.clear()
+	_count_frames.clear()
 
 	for i in 3:
+		var bx := start_x + i * (box_w + gap)
+		var by := box_y
+
+		# Drop shadow
+		var shadow := ColorRect.new()
+		shadow.color = Color(0.0, 0.0, 0.0, 0.45)
+		shadow.offset_left = bx + 4
+		shadow.offset_top = by + 4
+		shadow.offset_right = bx + box_w + 4
+		shadow.offset_bottom = by + box_h + 4
+		_count_layer.add_child(shadow)
+
+		# Border frame
+		var frame := ColorRect.new()
+		frame.offset_left = bx - 2
+		frame.offset_top = by - 2
+		frame.offset_right = bx + box_w + 2
+		frame.offset_bottom = by + box_h + 2
+		frame.color = Color(0.20, 0.24, 0.32, 1.0)
+		_count_layer.add_child(frame)
+		_count_frames.append(frame)
+
+		# Inner box
 		var box := ColorRect.new()
-		box.offset_left = start_x + i * (box_w + gap)
-		box.offset_top = box_y
-		box.offset_right = box.offset_left + box_w
-		box.offset_bottom = box_y + box_h
-		box.color = Color(0.15, 0.18, 0.22, 0.95)
+		box.offset_left = bx
+		box.offset_top = by
+		box.offset_right = bx + box_w
+		box.offset_bottom = by + box_h
+		box.color = Color(0.10, 0.12, 0.16, 1.0)
 		_count_layer.add_child(box)
 		_count_boxes.append(box)
 
-		var lbl := _make_label(str(i + 2), 48, Color.WHITE)
-		lbl.offset_left = box.offset_left
-		lbl.offset_top = box_y + 10
-		lbl.offset_right = box.offset_right
-		lbl.offset_bottom = box_y + box_h - 10
+		# Large number
+		var lbl := _make_label(str(i + 2), 56, Color.WHITE)
+		lbl.offset_left = bx
+		lbl.offset_top = by + 10
+		lbl.offset_right = bx + box_w
+		lbl.offset_bottom = by + box_h - 28
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_count_layer.add_child(lbl)
 		_count_labels.append(lbl)
 
-	var hint := _make_label("← / → : Select   •   Attack / Jump : Confirm   •   Esc : Quit", 16, Color(0.6, 0.65, 0.7))
+		# Sub-label
+		var sub_lbl := _make_label("PLAYER%s" % ("S" if i > 0 else ""), 11, Color(0.45, 0.50, 0.60))
+		sub_lbl.offset_left = bx
+		sub_lbl.offset_top = by + box_h - 24
+		sub_lbl.offset_right = bx + box_w
+		sub_lbl.offset_bottom = by + box_h - 6
+		sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_count_layer.add_child(sub_lbl)
+
+	var hint := _make_label("← / → : Select   •   Attack / Jump : Confirm   •   Esc : Quit", 15, Color(0.40, 0.45, 0.55))
 	hint.offset_left = 0
-	hint.offset_top = 440
+	hint.offset_top = 415.0
 	hint.offset_right = VIEWPORT_W
-	hint.offset_bottom = 470
+	hint.offset_bottom = 445.0
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_count_layer.add_child(hint)
 
@@ -376,11 +454,13 @@ func _build_count_screen() -> void:
 func _update_count_ui() -> void:
 	for i in 3:
 		if i == count_cursor:
-			_count_boxes[i].color = Color(0.25, 0.5, 0.95, 0.95)
-			_count_labels[i].add_theme_color_override("font_color", Color.WHITE)
+			_count_frames[i].color = Color(1.0, 0.82, 0.22, 1.0)
+			_count_boxes[i].color = Color(0.16, 0.20, 0.30, 1.0)
+			_count_labels[i].add_theme_color_override("font_color", Color(1.0, 0.92, 0.48))
 		else:
-			_count_boxes[i].color = Color(0.15, 0.18, 0.22, 0.95)
-			_count_labels[i].add_theme_color_override("font_color", Color(0.5, 0.55, 0.6))
+			_count_frames[i].color = Color(0.20, 0.24, 0.32, 1.0)
+			_count_boxes[i].color = Color(0.10, 0.12, 0.16, 1.0)
+			_count_labels[i].add_theme_color_override("font_color", Color(0.38, 0.42, 0.52))
 
 
 func _handle_count_input() -> void:
@@ -436,6 +516,23 @@ func _build_char_screen() -> void:
 	_char_status_labels.clear()
 	_char_control_labels.clear()
 	_char_columns.clear()
+	_char_card_bgs.clear()
+	_char_card_accents.clear()
+
+	# Card backgrounds — added before column content so they render behind
+	for i in 4:
+		var card_bg := ColorRect.new()
+		card_bg.color = Color(0.09, 0.11, 0.16, 0.92)
+		card_bg.visible = false
+		_char_layer.add_child(card_bg)
+		_char_card_bgs.append(card_bg)
+
+		var card_accent := ColorRect.new()
+		var pc := PLAYER_LABEL_COLORS[i]
+		card_accent.color = Color(pc.r, pc.g, pc.b, 0.90)
+		card_accent.visible = false
+		_char_layer.add_child(card_accent)
+		_char_card_accents.append(card_accent)
 
 	# Build 4 columns (show/hide based on num_players)
 	for i in 4:
@@ -499,36 +596,52 @@ func _layout_char_columns() -> void:
 	for i in 4:
 		var col: Control = _char_columns[i]
 		col.visible = i < n
+		var card_bg: ColorRect = _char_card_bgs[i]
+		var card_accent: ColorRect = _char_card_accents[i]
+		card_bg.visible = i < n
+		card_accent.visible = i < n
 		if i >= n:
 			continue
 
 		var x := gap + i * (col_w + gap)
 		var y := 95.0
 
-		# Player header  (using a background swatch)
+		# Card background panel
+		card_bg.offset_left = x - 12
+		card_bg.offset_top = y - 10
+		card_bg.offset_right = x + col_w + 12
+		card_bg.offset_bottom = y + 355
+
+		# Colored left accent bar (player color)
+		card_accent.offset_left = x - 12
+		card_accent.offset_top = y - 10
+		card_accent.offset_right = x - 7
+		card_accent.offset_bottom = y + 355
+
+		# Player portrait
 		var face: TextureRect = _char_face_rects[i]
-		face.offset_left = x + (col_w - 100) / 2.0
+		face.offset_left = x + (col_w - 140) / 2.0
 		face.offset_top = y
-		face.offset_right = face.offset_left + 100
-		face.offset_bottom = y + 100
+		face.offset_right = face.offset_left + 140
+		face.offset_bottom = y + 140
 
 		var name_lbl: Label = _char_name_labels[i]
 		name_lbl.offset_left = x
-		name_lbl.offset_top = y + 110
+		name_lbl.offset_top = y + 150
 		name_lbl.offset_right = x + col_w
-		name_lbl.offset_bottom = y + 140
+		name_lbl.offset_bottom = y + 180
 
 		var status_lbl: Label = _char_status_labels[i]
 		status_lbl.offset_left = x
-		status_lbl.offset_top = y + 145
+		status_lbl.offset_top = y + 188
 		status_lbl.offset_right = x + col_w
-		status_lbl.offset_bottom = y + 175
+		status_lbl.offset_bottom = y + 218
 
 		var ctrl_lbl: Label = _char_control_labels[i]
 		ctrl_lbl.offset_left = x
-		ctrl_lbl.offset_top = y + 200
+		ctrl_lbl.offset_top = y + 228
 		ctrl_lbl.offset_right = x + col_w
-		ctrl_lbl.offset_bottom = y + 320
+		ctrl_lbl.offset_bottom = y + 346
 
 
 func _update_char_ui() -> void:
@@ -645,6 +758,7 @@ func _build_arena_screen() -> void:
 	_arena_card_labels.clear()
 	_arena_card_bg_holders.clear()
 	_arena_card_glows.clear()
+	_arena_card_frames.clear()
 
 	var card_w := 300.0
 	var card_h := 280.0
@@ -654,12 +768,22 @@ func _build_arena_screen() -> void:
 	var card_y := 120.0
 
 	for i in ARENA_NAMES.size():
+		# Border frame — rendered before card so it shows as an outline
+		var frame := ColorRect.new()
+		frame.offset_left = start_x + i * (card_w + gap) - 3
+		frame.offset_top = card_y - 3
+		frame.offset_right = frame.offset_left + card_w + 6
+		frame.offset_bottom = card_y + card_h + 6
+		frame.color = Color(0.20, 0.23, 0.30, 0.85)
+		_arena_layer.add_child(frame)
+		_arena_card_frames.append(frame)
+
 		var card := ColorRect.new()
 		card.offset_left = start_x + i * (card_w + gap)
 		card.offset_top = card_y
 		card.offset_right = card.offset_left + card_w
 		card.offset_bottom = card_y + card_h
-		card.color = Color(0.12, 0.14, 0.18, 0.95)
+		card.color = Color(0.10, 0.12, 0.16, 0.95)
 		card.clip_children = CanvasItem.CLIP_CHILDREN_ONLY
 		_arena_layer.add_child(card)
 		_arena_cards.append(card)
@@ -782,14 +906,16 @@ func _load_arena_preview_bgs() -> void:
 func _update_arena_ui() -> void:
 	for i in ARENA_NAMES.size():
 		if i == arena_cursor:
-			_arena_cards[i].color = Color(0.2, 0.35, 0.65, 0.95)
-			_arena_card_labels[i].add_theme_color_override("font_color", Color(1.0, 1.0, 0.7))
+			_arena_card_frames[i].color = Color(1.0, 0.85, 0.22, 1.0)
+			_arena_cards[i].color = Color(0.16, 0.22, 0.38, 0.95)
+			_arena_card_labels[i].add_theme_color_override("font_color", Color(1.0, 0.95, 0.55))
 			_arena_card_bg_holders[i].modulate = Color(1.0, 1.0, 1.0, 1.0)
-			_arena_card_glows[i].color = Color(1.0, 1.0, 0.7, 0.18)
+			_arena_card_glows[i].color = Color(1.0, 1.0, 0.7, 0.14)
 		else:
-			_arena_cards[i].color = Color(0.12, 0.14, 0.18, 0.95)
-			_arena_card_labels[i].add_theme_color_override("font_color", Color(0.6, 0.65, 0.7))
-			_arena_card_bg_holders[i].modulate = Color(0.72, 0.72, 0.78, 0.95)
+			_arena_card_frames[i].color = Color(0.20, 0.23, 0.30, 0.80)
+			_arena_cards[i].color = Color(0.10, 0.12, 0.16, 0.90)
+			_arena_card_labels[i].add_theme_color_override("font_color", Color(0.52, 0.58, 0.66))
+			_arena_card_bg_holders[i].modulate = Color(0.65, 0.65, 0.72, 0.90)
 			_arena_card_glows[i].color = Color(1.0, 1.0, 0.7, 0.0)
 
 
@@ -1483,6 +1609,36 @@ func _bind_joy_motion_if_missing(action: String, axis: JoyAxis, axis_value: floa
 	motion_event.axis_value = axis_value
 	motion_event.device = device
 	InputMap.action_add_event(action, motion_event)
+
+
+# ─── Platform Visual Polish ───────────────────────────────────────────────────
+
+func _setup_platform_visual_extras() -> void:
+	_plat_highlight_rects.clear()
+	_plat_shadow_rects.clear()
+	var plat_visuals: Array[ColorRect] = [platform_1_visual, platform_2_visual, platform_3_visual]
+	for pv in plat_visuals:
+		var parent := pv.get_parent()
+
+		# Thin white highlight rim at the very top edge of each platform
+		var hl := ColorRect.new()
+		hl.offset_left = pv.offset_left + 4
+		hl.offset_top = pv.offset_top
+		hl.offset_right = pv.offset_right - 4
+		hl.offset_bottom = pv.offset_top + 2
+		hl.color = Color(1.0, 1.0, 1.0, 0.22)
+		parent.add_child(hl)
+		_plat_highlight_rects.append(hl)
+
+		# Subtle dark drop-shadow below the platform body
+		var sh := ColorRect.new()
+		sh.offset_left = pv.offset_left + 6
+		sh.offset_top = pv.offset_bottom
+		sh.offset_right = pv.offset_right - 6
+		sh.offset_bottom = pv.offset_bottom + 5
+		sh.color = Color(0.0, 0.0, 0.0, 0.35)
+		parent.add_child(sh)
+		_plat_shadow_rects.append(sh)
 
 
 # ─── Utility ──────────────────────────────────────────────────────────────────

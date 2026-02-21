@@ -25,7 +25,7 @@ const DASH_SPEED = 600.0
 const DASH_DURATION = 0.15
 const DASH_COOLDOWN = 0.5
 const MAX_HITS = 3
-const MAX_STOCKS = 3
+const MAX_STOCKS = 10
 const HIT_INVINCIBILITY = 0.5
 
 @export var action_left := "p1_left"
