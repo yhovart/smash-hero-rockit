@@ -80,6 +80,7 @@ var menu_asset_lookup: Dictionary = {}
 
 
 func _ready() -> void:
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	if player_1.has_signal("died"):
 		player_1.connect("died", Callable(self, "_on_player_1_died"))
 	if player_2.has_signal("died"):
