@@ -8,13 +8,41 @@ const PLAYER_ACTION_SETS: Array = [
 	["p3_left", "p3_right", "p3_jump", "p3_attack", "p3_vapor", "p3_puddle", "p3_dash"],
 	["p4_left", "p4_right", "p4_jump", "p4_attack", "p4_vapor", "p4_puddle", "p4_dash"],
 ]
-const CHARACTER_NAMES: Array[String] = ["Franck", "Yves-Henri", "Joel", "Maite"]
-const CHARACTER_ASSET_PREFIXES: Array[String] = ["franck", "Yves-Henri", "Joel", "Maite"]
+const CHARACTER_NAMES: Array[String] = [
+	"Franck",
+	"Yves-Henri",
+	"Joel",
+	"Maite",
+	"Alexia",
+	"Gevrai",
+	"Raphael",
+	"Roxane",
+	"Tommy",
+	"Ash",
+]
+const CHARACTER_ASSET_PREFIXES: Array[String] = [
+	"franck",
+	"Yves-Henri",
+	"Joel",
+	"Maite",
+	"Alexia",
+	"Gevrai",
+	"Raphael",
+	"Roxane",
+	"Tommy",
+	"Ash",
+]
 const CHARACTER_COLORS: Array[Color] = [
 	Color(0.15, 0.45, 0.95, 1.0),
 	Color(0.9, 0.2, 0.15, 1.0),
 	Color(0.2, 0.8, 0.35, 1.0),
 	Color(0.95, 0.75, 0.2, 1.0),
+	Color(0.78, 0.32, 0.92, 1.0),
+	Color(0.2, 0.74, 0.82, 1.0),
+	Color(0.96, 0.56, 0.22, 1.0),
+	Color(0.86, 0.32, 0.54, 1.0),
+	Color(0.28, 0.84, 0.58, 1.0),
+	Color(0.7, 0.7, 0.75, 1.0),
 ]
 const PLAYER_LABEL_COLORS: Array[Color] = [
 	Color(0.5, 0.7, 1.0, 1.0),
@@ -1114,15 +1142,25 @@ func _build_menu_asset_lookup() -> void:
 
 
 func _get_menu_character_texture(character_index: int, expression: String) -> Texture2D:
-	var prefix := CHARACTER_ASSET_PREFIXES[character_index]
-	for state in [expression, "face"]:
-		var key := _normalize_asset_name("%s_%s" % [prefix, state])
-		var path: String = menu_asset_lookup.get(key, "")
-		if not path.is_empty():
-			var texture := _try_load_menu_texture(path)
-			if texture != null:
-				return texture
+	for prefix in _character_prefix_variants(CHARACTER_ASSET_PREFIXES[character_index]):
+		for state in [expression, "face"]:
+			var key := _normalize_asset_name("%s_%s" % [prefix, state])
+			var path: String = menu_asset_lookup.get(key, "")
+			if not path.is_empty():
+				var texture := _try_load_menu_texture(path)
+				if texture != null:
+					return texture
 	return null
+
+
+func _character_prefix_variants(prefix: String) -> Array[String]:
+	var variants: Array[String] = [prefix]
+	var normalized := _normalize_asset_name(prefix)
+	if normalized == "tommy":
+		variants.append("Toomy")
+	if normalized == "yves_henri":
+		variants.append("Yves-Henry")
+	return variants
 
 
 func _try_load_menu_texture(path: String) -> Texture2D:

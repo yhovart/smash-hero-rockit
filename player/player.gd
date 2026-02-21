@@ -466,13 +466,16 @@ func _load_visual_textures() -> void:
 		var state_name: String = state
 		if state == "right":
 			state_name = "rigth"
-		var key := _normalize_asset_name("%s_%s" % [asset_prefix, state])
-		var typo_key := _normalize_asset_name("%s_%s" % [asset_prefix, state_name])
-		var path: String = by_name.get(key, by_name.get(typo_key, ""))
-		if not path.is_empty():
+		for prefix in _character_prefix_variants(asset_prefix):
+			var key := _normalize_asset_name("%s_%s" % [prefix, state])
+			var typo_key := _normalize_asset_name("%s_%s" % [prefix, state_name])
+			var path: String = by_name.get(key, by_name.get(typo_key, ""))
+			if path.is_empty():
+				continue
 			var texture := _load_texture_from_path(path)
 			if texture != null:
 				visual_textures[state] = texture
+				break
 
 func _update_avatar_texture(state: String) -> void:
 	var tex: Texture2D = visual_textures.get(state, visual_textures.get("face", null))
@@ -497,6 +500,16 @@ func _update_visual_state() -> void:
 
 func _normalize_asset_name(asset_name: String) -> String:
 	return asset_name.to_lower().replace("-", "_")
+
+
+func _character_prefix_variants(prefix: String) -> Array[String]:
+	var variants: Array[String] = [prefix]
+	var normalized := _normalize_asset_name(prefix)
+	if normalized == "tommy":
+		variants.append("Toomy")
+	if normalized == "yves_henri":
+		variants.append("Yves-Henry")
+	return variants
 
 func _load_texture_from_path(path: String) -> Texture2D:
 	var image := Image.new()
